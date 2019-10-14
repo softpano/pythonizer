@@ -1,4 +1,5 @@
-# THIS IS A PRE ANNONCEMENT 
+## Two pass "fuzzy" compiler from Perl to Python 
+### THIS IS A PRE ANNONCEMENT 
 
 Some organizations are now involved in converting thier Perl codebase into Python. The author previously particilated in  several projects of 
 converting mainframe codebase into Unix and think that this area might be a useful expantion of his skills. 
