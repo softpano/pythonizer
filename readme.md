@@ -1,43 +1,41 @@
-## Two pass "fuzzy" compiler from Perl to Python 
-### THIS IS A PRE ANNONCEMENT 
+## Two-pass "fuzzy" compiler from Perl to Python 
+### THIS IS A PRE ANNOUNCEMENT 
 
-Some organizations are now involved in converting thier Perl codebase into Python. The author previously particilated in  several projects of 
-converting mainframe codebase into Unix and think that this area might be a useful expantion of his skills. 
+Some organizations are now involved in converting their Perl codebase into Python. The author previously participated in several projects of converting mainframe codebase to Unix (mainly AIX) and think that this area might be a useful expansion of his skills. 
  
-Of course Perl 5 is here to stay (plase note what happened with people who were predicting the demise of Fortran ;-), but for some reason 
-several orgnizatings are expressed interest in converting thier support script codebase into a single language. Most often this is Python. 
-Ruby which is probably a better match for such a translation is seldom used. 
+Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), but for some reason, 
+several organizations are expressed interest in converting their support script codebase into a single language. Most often, this is Python. 
+Ruby, which is probably a better match for such a translation, is seldom used. 
 
-My feeling is that there should be some better tools for this particular task to lessen the costs, the time and effort. One trivial idea is to havea better, 
-whitten with the knoledge of compiler technologogies (the author is former compiler writer) tool that falls into the catagory of medium sizecompliers with 
-totalaffort around one man year or less. 
+My feeling is that there should be some better tools for this particular task to lessen the costs, time, and effort. One trivial idea is to have a better, 
+whitten with some level of knowledge of compiler technologies tool that falls into the category of medium size complies with total effort around one man year or less. 
 
-Assuming 10 lines per day of debugged code for task of complexity comparable with writing of compilers, the estimated size should be arounde 3-4K
-lines of code. 
+Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 3-4K lines of code. 
 
-So far just an idea, althouth the prototype was already written. It might be wrong and it might be impossible to write usinguseful in less then 4K lines. 
+So far, just an idea, although the prototype was already written. It might be wrong, and it might be impossible to write anything useful in less than 4K lines. 
 
-In any case the idea of "fuzzy pythonizer" is to translate subset of Perl typically used in sysadmin scripts into Python, marking untranslatable statmements
-or statements parts with appropriate comments using ombination of two approaches approaches
+In any case the idea of "fuzzy pythonizer" is to translate a subset of Perl typically used in sysadmin scripts into Python, marking untranslatable statements
+or statements parts with appropriate comments using a combination of two approaches approaches
 
-1. Fuzzy matching. The program will use a database of "normalized" patterns to translate some common statements. No machine learning algorithms or God forbid nueral netwroks will be used ;-). Some Prolog level staff at max. See also http://www.informit.com/articles/article.aspx?p=1848528
+1. Fuzzy matching. The program will use a database of "normalized" patterns to translate some common statements. No machine learning algorithms or God forbid neural networks will be used ;-). Some Prolog level staff at max. See also http://www.informit.com/articles/article.aspx?p=1848528
   
-2. Limited lookahead "fuzzy" parsing (May be Floyd-Evans language can be used; see Gries book https://www.amazon.com/Compiler-Construction-Digital-Computers-David/dp/047132776X )
+2. Limited lookahead "fuzzy" parsing (Maybe long forgotten Floyd-Evans language can be used; see Gries book https://www.amazon.com/Compiler-Construction-Digital-Computers-David/dp/047132776X )
 
-Preliminary classification perfomed by the author and the Knuth old paper (1971) https://onlinelibrary.wiley.com/doi/abs/10.1002/spe.4380010203 online version of Stanford research report is availbale at  https://apps.dtic.mil/dtic/tr/fulltext/u2/715513.pdf ) suggests that around 20-30% of statments in a typical Perl sysadmin script can be fe found in
-database using some form of fuzzy matching. 
+Preliminary classification performed by the author and the Knuth old paper (1971) https://onlinelibrary.wiley.com/doi/abs/10.1002/spe.4380010203 online version of Stanford research report is available at  https://apps.dtic.mil/dtic/tr/fulltext/u2/715513.pdf ) suggests that around 20-30% of statements in a typical Perl sysadmin script can be found in
+the database using some form of fuzzy matching. 
 
-Another 50% can be (perfectly of "fuzzy") tranlated using recusive decent parser or some limited lookahead method
+Another 50% can be (perfectly of "fuzzy") translated using recursive descent parser or some limited lookahead method
 
 Around 20% can be translated only in part (but some useful hints can be provided) 
 
-Around 10% are non-translatable by automatic means without huge and unjustifiable increase of the complexity of such a translator.   
+Around 10% are non-translatable by automatic means without a huge and unjustifiable increase in the complexity of such a translator.   
 
-The most interesting part here is whether it is possible to match and mix those two parts into a usable prodduct that has less then 4K line of code.   
+The most interesting part here is whether it is possible to match and mix those two parts into a usable product that has less than 4K lines of code.   
 
-As this is a hobby project no timeline is provided but I expect creating an alpha version around end of 2019 early 2020.
+As this is a hobby project, no timeline is provided, but I expect to create an alpha version around the end of 2019, or early 2020.
 
-The autho would appraciated comments and pointers to useful information by those  who are interested in the final product.  
+The author would appreciate comments and pointers to useful information by those who are interested in the final product.  
 
-So far conceptually the translator with work intwo phezed. The frst phaze is "normalization" of Perl program to simplify the second phaze. 
-The second stage is convertion of Perlcode. Whether I need the parse tree or not is an interesting question, but I would definitly benefit from the cross reference table generated by Perl interpreter. 
+So far, conceptually, the translator with work in two phases/passes. The first phase is the "normalization" of the Perl program to simplify the second phase. 
+
+The second stage is a conversion of Perl code. Whether I need the parse tree or not is an interesting question, but I would definitely benefit from the cross-reference table generated by the Perl interpreter. 
