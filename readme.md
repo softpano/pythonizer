@@ -1,4 +1,4 @@
-## Two-pass "fuzzy" compiler from Perl to Python 
+## Two-pass "fuzzy" transformer from Perl to "semi-Python" 
 ### THIS IS A PRE ANNOUNCEMENT 
 
 Some organizations are now involved in converting their Perl codebase into Python. The author previously participated in several projects of converting mainframe codebase to Unix (mainly AIX) and think that this area might be a useful expansion of his skills. 
@@ -28,11 +28,18 @@ Another 50% can be (perfectly of "fuzzy") translated using recursive descent par
 
 Around 20% can be translated only in part (but some useful hints can be provided) 
 
-Around 10% are non-translatable by automatic means without a huge and unjustifiable increase in the complexity of such a translator.   
+Around 10% are non-translatable by automatic means without a huge and unjustifiable increase in the complexity of such a translator.  For example for many Perl subroutines it is impossible to guess the actual number of parameters. There can be some clues like 
+
+```Perl
+($p1,$p2,$p3)=@_;
+```
+
+or $_[0], $_[1] and $_[2] in the body of the subroutine. But that's about it. 
+
 
 The most interesting part here is whether it is possible to match and mix those two parts into a usable product that has less than 4K lines of code.   
 
-As this is a hobby project, no timeline is provided, but I expect to create an alpha version around the end of 2019, or early 2020.
+As this is a hobby project, no timeline is provided, but I expect to create an alpha version in early 2020.
 
 The author would appreciate comments and pointers to useful information by those who are interested in the final product.  
 
