@@ -1,26 +1,31 @@
 ## Two-pass "fuzzy" transformer from Perl to "semi-Python" 
 ### THIS IS A PRE ANNOUNCEMENT 
 
-Some organizations are now involved in converting their Perl codebase into Python. The author previously participated in several projects of converting mainframe codebase to Unix (mainly AIX) and think that this area might be a useful expansion of his skills. 
+Some organizations are now involved in converting their Perl codebase into Python. The author previously participated in several projects of converting mainframe codebase to Unix (mainly AIX) and thinks that this area might be a useful expansion of his skills. 
  
 Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), but for some reason, 
 several organizations are expressed interest in converting their support script codebase into a single language. Most often, this is Python. 
 Ruby, which is probably a better match for such a translation, is seldom used. 
 
-My feeling is that there should be some better tools for this particular task to lessen the costs, time, and effort. One trivial idea is to have a better, 
-whitten with some level of knowledge of compiler technologies tool that falls into the category of medium size complies with total effort around one man year or less. 
+My feeling is that there should be some better tools for this particular task to lessen the costs, time, and effort. One trivial idea is to have a better, whitten with some level of knowledge of compiler technologies tool that falls into the category of small toy language  compliers with total effort around one man year or less. 
 
-Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 3-4K lines of code. 
+Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 2-3K lines of code. 
 
-So far, just an idea, although the prototype was already written. It might be wrong, and it might be impossible to write anything useful in less than 4K lines. As of November 2019 less then 1.5K lines were written and so far it looks like this estimate is more or less realistic, if we omit extreme idesyncracies.  
+So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of November 2019 less 1.5K lines were written but this early alpha version wasable to translate around 80-90% of statements. Of course, less then that are translated accuratly, especially when Perl functions and regex are used extensively.  
 
-In any case the idea of "fuzzy pythonizer" is to translate a subset of Perl typically used in sysadmin scripts into Python, marking untranslatable statements, or statements parts with appropriate comments using a combination of two approaches approaches
+But even in the current form this provide some savings in translation effort. Of couse some Python functions do not match 1:1 Perl functions  but that's probably unavodable. Also absence of goto, "until" loop, double quotes literals, complicates the task futher. But simple statements can be transated more or less OK (see below.)  
 
-For more info see 
+Some missing feature can be emulated: right now double quoted literals are decomplied and then tranlsated to sequance of concatenation, see below. 
+
+In any case, based on so far written prototype  the idea of "fuzzy pythonizer" looks viable at least for typical small to medium syadmin scripts. 
+
+This readme is not intended to be updated and will be left "as is". More current information can be found at:  
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/two_pass_fuzzy_compiler_from_perl_to_python.shtml
 
-As of Nov 20 alpha version produced the following tranlation of pre_pythoner.pl 
+As of Nov 20, the alpha version 0.07 produced the following translation of pre_pythoner.pl (only fragment is shown, but theprogram was able to translate all the code). 
+
+##Example of tranlsation##
 
 ```Perl
 PYTHONIZER: Fuzzy translator of Python to Perl (last modified 191120_1730) Running at 19/11/20 17:30
