@@ -11,9 +11,9 @@ My feeling is that there should be some better tools for this particular task to
 
 Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 2-3K lines of code. 
 
-So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of November 2019 less 1.5K lines were written but this early alpha version was able to translate around 90-95% of statements of pre_pythonizer.pl -- the script that was posted on this site and which currently serves as then main test. Of couse the script uses very small subset of Perl but even if on other script the result will be in 80% renace, this still represents considerable labor savings
+So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of November 2019 less 1.5K lines were written but this early alpha version was able to translate around 90-95% of statements of pre_pythonizer.pl -- the script that was posted on this site and which currently serves as then main test. Of couse the script uses very small subset of Perl but even if on other more complex Perl scripts the result will be above 80%, this still represents considerable labor savings, allowing to accomplish the task in less time. 
 
-Of course, less then that are translated accuratly, especially when Perl functions and regex are used extensively.  
+Of course,  when Perl functions and regex are used extensively the result can be simply incorrect.  
 
 But even in the current form this provide some savings in translation effort. Of couse some Python functions do not match 1:1 Perl functions  but that's probably unavodable. Also absence of goto, "until" loop, double quotes literals, complicates the task futher. But simple statements can be transated more or less OK (see below.)  
 
