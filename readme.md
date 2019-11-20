@@ -25,7 +25,7 @@ http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/tw
 
 As of Nov 20, the alpha version 0.07 produced the following translation of pre_pythoner.pl (only fragment is shown, but theprogram was able to translate all the code). 
 
-##Example of tranlsation##
+#### Example of tranlsation 
 
 ```Perl
 PYTHONIZER: Fuzzy translator of Python to Perl (last modified 191120_1730) Running at 19/11/20 17:30
