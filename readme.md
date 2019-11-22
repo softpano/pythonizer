@@ -89,4 +89,5 @@ Results of transcription are written to the file  Mytests/main_test.py
  115 | 1 |      |   # trip traling blanks, if any
  116 | 1 |      |   if line.re.match(r"(^.*\S)\s+$"):                                     #Perl: if( $line=~/(^.*\S)\s+$/ ){
  117 | 2 |      |      line=rematch.group(1)                                              #Perl: $line=$1;
-  
+  ... ... ...
+```
