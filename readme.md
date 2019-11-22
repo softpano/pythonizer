@@ -9,9 +9,13 @@ Ruby, which is probably a better match for such a translation, is seldom used.
 
 My feeling is that there should be some better tools for this particular task to lessen the costs, time, and effort. One trivial idea is to have a better, whitten with some level of knowledge of compiler technologies tool that falls into the category of small toy language  compliers with total effort around one man year or less. 
 
-Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 2-3K lines of code. 
+Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 3-5K lines of code (~1K line phaze 1 and 2-3K line phaze 2 
 
-So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of November 2019 less 1.5K lines were written but this early alpha version was able to translate around 90-95% of statements of pre_pythonizer.pl -- the script that was posted on this site and which currently serves as then main test. Of couse the script uses very small subset of Perl but even if on other more complex Perl scripts the result will be above 80%, this still represents considerable labor savings, allowing to accomplish the task in less time. 
+So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of November 2019 around 2.5K lines were written and alpha version works more or less OK on simple Perl text with wrounf 80% statement translation sucess rate.
+
+I ahad chosen pre_pythonizer.pl -- the script that was posted on this site as the asseptance test. Of couse the script uses very small subset of Perl (no OO, no modules), but it a way it is representative of a large category of Perl script written by system administrators,m who raraly use esoteric features and, generally, coming from C+shell backgraund, prefer procedural style of programming. Only GUI progrms are written using OO stle by this catagory of programmers. 
+
+On  this catagory of scripts the automatic traslation (or more corretly tranliteration ;-) can provides considerable labor savings during conversion, allowing to accomplish the task in less time and with higher quality. 
 
 Of course,  when Perl functions and regex are used extensively the result can be simply incorrect.  
 
@@ -21,13 +25,13 @@ Some missing feature can be emulated: right now double quoted literals are decom
 
 In any case, based on so far written prototype  the idea of "fuzzy pythonizer" looks viable at least for typical small to medium syadmin scripts. 
 
-This readme is not intended to be updated and will be left "as is". More current information can be found at:  
+This readme is for impormational purposes only and is not intended to be updated often. More current information can be found at:  
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/two_pass_fuzzy_compiler_from_perl_to_python.shtml
 
-As of Nov 20, the alpha version 0.07 produced the following translation of pre_pythoner.pl (only fragment is shown, but theprogram was able to translate all the code). 
+As of Nov 20, the alpha version 0.07 produced the following translation of pre_pythoner.pl (only fragment is shown, but theprogram was able to translate all the code). That does not  mean that that we are getting much closer as in programming that last 20% of functionality usually takes nine times as much to implement , debug and test as the first 80% (kind of another verion of Pareto Law)   
 
-#### Example of tranlsation 
+#### Example of tranlsation (version 0.07 alpha, Nov 20, 2019) 
 
 ```Perl
 PYTHONIZER: Fuzzy translator of Python to Perl (last modified 191120_1730) Running at 19/11/20 17:30
@@ -67,4 +71,4 @@ Results of transcription are written to the file  Mytests/main_test.py
                                                                          #Perl: print STDERR "ATTENTION!!! $SCRIPT_NAME is working in debugging mode $debug with autocommit of source to $HOME/Archive\n";
   84 | 1 |      |   autocommit("$HOME/Archive",$use_git_repo); # commit source archive directory (which can be controlled by GIT)
   86 | 0 |      |print >>sys.stderr "=&quot; * 80                                       #Perl: print STDERR  "=" x 80,"\n";
-
+... ... ... 
