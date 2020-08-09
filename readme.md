@@ -1,5 +1,11 @@
 ## Two-pass "fuzzy" transformer from Perl to "semi-Python" 
-### THIS IS A PRE ANNOUNCEMENT 
+### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.2 
+
+This readme is for impormational purposes only and is not intended to be updated often. More current information can be found at:  
+
+http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/index.shtml
+
+http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml
 
 Some organizations are now involved in converting their Perl codebase into Python. The author previously participated in several projects of converting mainframe codebase to Unix (mainly AIX) and thinks that this area might be a useful expansion of his skills. 
  
@@ -11,25 +17,22 @@ My feeling is that there should be some better tools for this particular task to
 
 Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 3-5K lines of code (~1K line phaze 1 and 2-3K line phaze 2 
 
-So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of November 2019 around 2.5K lines were written and alpha version works more or less OK on simple Perl text with wrounf 80% statement translation sucess rate.
+So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of Aug 5, 2020 around 2K lines were written and alpha version works more or less OK on simple Perl scripts with around 80% statement translation sucess rate.
 
-I ahad chosen pre_pythonizer.pl -- the script that was posted on this site as the asseptance test. Of couse the script uses very small subset of Perl (no OO, no modules), but it a way it is representative of a large category of Perl script written by system administrators,m who raraly use esoteric features and, generally, coming from C+shell backgraund, prefer procedural style of programming. Only GUI progrms are written using OO stle by this catagory of programmers. 
+As the test I  had chosen pre_pythonizer.pl -- the script that convert Perl script into the form more sutable to processing (optiona). The test of this script serves as a king of  the asseptance test. Of couse this script uses a very small subset of Perl (no OO, no modules), but it a way it is representative of a large category of Perl script written by system administrators, who raraly use esoteric features and, generally, coming from C+shell backgraund, prefer procedural style of programming. Only GUI progrms are written using OO stle by this catagory of programmers. 
 
-On  this catagory of scripts the automatic traslation (or more corretly tranliteration ;-) can provides considerable labor savings during conversion, allowing to accomplish the task in less time and with higher quality. 
-
-Of course,  when Perl functions and regex are used extensively the result can be simply incorrect.  
+For this category of scripts the automatic traslation (or more corretly tranliteration ;-) can provides considerable labor savings during conversion, allowing to accomplish the task in less time and with higher quality. Of course,  when Perl functions and regex are used extensively the result can be simply incorrect.  
 
 But even in the current form this provide some savings in translation effort. Of couse some Python functions do not match 1:1 Perl functions  but that's probably unavodable. Also absence of goto, "until" loop, double quotes literals, complicates the task futher. But simple statements can be transated more or less OK (see below.)  
 
-Some missing feature can be emulated: right now double quoted literals are decomplied and then tranlsated to sequance of concatenation, see below. 
+Some missing feature can be emulated: right now double quoted literals are decomplied and then tranlsated to sequance of concatenation (see below) but in Python 3.8+ they can be compiled into F-strings. Assignment in if statement now are implemented in P{ython 3.8  soi you do not need torefactor the code and push assignment out of conditinsl anymore.  
 
 In any case, based on so far written prototype  the idea of "fuzzy pythonizer" looks viable at least for typical small to medium syadmin scripts. 
 
-This readme is for impormational purposes only and is not intended to be updated often. More current information can be found at:  
+As of Aug 5,2020, the alpha version 0.2 was uploaded. 
 
-http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/two_pass_fuzzy_compiler_from_perl_to_python.shtml
-
-As of Nov 20, the alpha version 0.07 produced the following translation of pre_pythoner.pl (only fragment is shown, but theprogram was able to translate all the code). That does not  mean that that we are getting much closer as in programming that last 20% of functionality usually takes nine times as much to implement , debug and test as the first 80% (kind of another verion of Pareto Law)   
+Here is an example of translation of an older verion (0.007) which is stll relevant: 
+    
 
 #### Example of tranlsation (version 0.07 alpha, Nov 20, 2019) 
 
