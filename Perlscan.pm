@@ -505,7 +505,7 @@ my ($k,$quote,$close_pos,$ind,$result,$prefix);
    $closing_delim=~tr/{[(</}])>/;
    $close_pos=single_quoted_literal($closing_delim,$offset); # first position after quote
    $quote=substr($source,$offset,$close_pos-1-$offset); # extract literal
-   $ValPerl[$tno]="$_[0]$quote$closing_delim";
+   $ValPerl[$tno]=$quote;
    #
    # decompose all scalar variables, if any, Array and hashes are left "as is"
    #
