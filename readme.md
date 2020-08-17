@@ -1,5 +1,7 @@
 ## Pythonizer: "fuzzy" translator/transformer from Perl to Python 
-### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.2 
+### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.3 
+
+Aug 17,2020: Version 0.3 was uploaded. Changes since version 0.2: default version of Python used is now version 3.8; option -p allows to set version 2 id you still need generation for Python 2.7 (more constructs will be untranslatable).  See user guide for details. 
 
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
