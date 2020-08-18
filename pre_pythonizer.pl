@@ -1,17 +1,17 @@
 #!/usr/bin/perl
 #:: pre_pythonizer version 0.1
-#:: Stage 1 of fuzzy tranlation of Perl to Python
+#:: Stage 1 of fuzzy translation of Perl to Python
 #:: Nikolai Bezroukov, 2019.
 #:: Licensed under Perl Artistic license
 #::
-#:: This phazeproduced FormattedSource PERL code and XREF table.
-#:: Both are fuzzy, in a sense  that they are constuctred using  heuristic methods.
-#:: In case of fuzzy reformatting prefix and suffix of the line are analysed to determine the nesting level.
-#:: in most cases this is sucessful approach and in a few case when it is not it is easovy corrected using pragma %set_nest_level
+#:: This phase produced Formatted Source PERL code and XREF table.
+#:: Both are fuzzy, in a sense  that they are constructed using  heuristic methods.
+#:: In case of fuzzy reformatting prefix and suffix of the line are analyzed to determine the nesting level.
+#:: in most cases this is successful approach and in a few case when it is not it is easovy corrected using pragma %set_nest_level
 #:: That's why we use the term "fuzzy".
 #::
-#:: To be sucessful, this approach requres a certain (very resonable) layout of the script.
-#:: But there some notable exceptions. For example, for script compless to eliminate whitespece this approach  is not sucessful
+#:: To be successful, this approach requires a certain (very reasonable) layout of the script.
+#:: But there some notable exceptions. For example, for script compressed to eliminate whitespece this approach  is not sucessful
 #:: You need to run them via perltidy first.
 #::
 #:: --- INVOCATION:
@@ -23,8 +23,6 @@
 #::    -v -- display version
 #::    -h -- this help
 #::    -t number -- size of tab (emulated with spaces)
-#::    -f  -- writen formattied test into the same file creating backup
-#::    -w --  provide additonal warnings about non-balance of quotes and round patenthes
 #::
 #::--- PARAMETERS:
 #::    1st -- name of  file
@@ -36,6 +34,7 @@
 # Ver      Date        Who        Modification
 # ====  ==========  ========  ==============================================================
 # 0.10  2019/10/14  BEZROUN   Initial implementation
+# 0.11  2019/11/20  BEZROUN   Minor changes in legendhelp screen
 
 #=========================== START =========================================================
 
@@ -66,7 +65,7 @@
    if($OS eq 'cygwin' ){
       $HOME="/cygdrive/f/_Scripts";  # $HOME/Archive is used for backups
    }elsif($OS eq 'linux' ){
-      $HOME=ENV{'HOME'}; # $HOME/Archive is used for backups
+      $HOME=$ENV{'HOME'}; # $HOME/Archive is used for backups
    }
    $LOG_DIR="/tmp/$SCRIPT_NAME";
 
