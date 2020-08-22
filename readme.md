@@ -1,7 +1,9 @@
 ## Pythonizer: "fuzzy" translator/transformer from Perl to Python 
-### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.3 
+### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.4 
 
-Aug 17,2020: Version 0.3 was uploaded. Changes since version 0.2: default version of Python used is now version 3.8; option -p allows to set version 2 if you still need generation for Python 2.7 (more constructs will be untranslatable).  See user guide for details. 
+Aug 22,2020: Version 0.4 was uploaded. The walrus operator and the f-strings now are used to tranlate Perl double quoted literals if option -p iset to 3 (default is -p=3). In this case Python 3.8 is used as the target language) 
+
+Aug 17, 2020: Version 0.3 was uploaded. Changes since version 0.2: default version of Python used is now version 3.8; option -p allows to set version 2 if you still need generation for Python 2.7 (more constructs will be untranslatable).  See user guide for details. 
 
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
@@ -9,29 +11,12 @@ http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Py
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml
 
-Some organizations are now involved in converting their Perl codebase into Python. The author previously participated in several projects of converting mainframe codebase to Unix (mainly AIX) and thinks that this area might be a useful expansion of his skills. 
- 
-Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), but for some reason, 
-several organizations are expressed interest in converting their support script codebase into a single language. Most often, this is Python. 
-Ruby, which is probably a better match for such a translation, is seldom used. 
-
-My feeling is that there should be some better tools for this particular task to lessen the costs, time, and effort. One trivial idea is to have a better, written with some level of knowledge of compiler technologies tool that falls into the category of "small toy language compliers" with the total effort around one man-year or less. 
-
-Assuming ten lines per day of debugged code for the task of complexity comparable with the writing of compilers, the estimated size should be around 3-5K lines of code (~1K line phase 1 and 2-3K line phase 2 
-
-So far, this just an idea, although the prototype was already written. The idea might be wrong, and it might be impossible to write anything useful in less than 3K lines. As of August 2020, around 2K codelines were written, and alpha version works more or less OK on simple Perl scripts with around 80% statement translation success rate.
-
-As the test, I  had chosen pre_pythonizer.pl -- the script that converts Perl script into the form more suitable to processing (optional). The run of pythonizer on this script serves as a kind of the acceptance test, which allows us to detect when the codebase reaches the stage of the alpha version.  Of course, this script uses a very small subset of Perl (no OO, no modules). Still, in a way it is representative of a large category of Perl script written by system administrators, who rarely use esoteric Perl features (using Perl mostly as "better Bash") and, generally, coming from C+shell background, most of them, especially older folk, prefer the procedural style of programming. Only GUI programs are written using OO-style by this category of programmers. Sometimes Web tools too. 
-
-For this category of scripts, the automatic translation (or more correctly transliteration ;-) can provide considerable labor savings during conversion, allowing to accomplish the task in less time and with higher quality. Essentially you can start to debug and enhance the converted script on the same day. Of course,  when Perl functions and regex are used extensively, the result can be simply incorrect. And Perl has enough idiosyncrasies that prevent even transliteration, to say nothing about translation. One interesting lesson from writing alpha version is that while Perl superficially has a decently designed lexical level (at least in comparison with BASH ;-) , the devil is in details and lexical scanner for Perl is a very complex undertaking that too probably the half of time spent on the project and slowed it considerably.  Also, the idea that Python is simple, orthogonal language proved to be false. In some areas, it is more convoluted than Perl and has more ways to accomplish the same task (which unfortunately often differ between 2.7 and 3.8)   
 
 Please note that this is an alpha version, not beta (traditionally beta are versions are 0.9 - 0.999). So major changes and enhancements are possible. At the present state phase, it still does not even attampt to tranlate construct outside subset typycally used in sysadmin scripts. There is also pre-pythonizer -- the first phaze of translation which currentlyis optionsl, although running Perl script via it increases chances that the script will be transliterated with fewer errors. 
 
-But even in the current form, this program may provide some savings in translation effort. Of course, some Python functions do not match 1:1 Perl functions, and you need to look at the translation with a grain of salt,  but that's probably unavoidable. It does not make the transliterated text useless.  Also, absence of goto, "until" loop, double quotes literals (until Python 3.6) as well as an ability to use assignment in conditional statements (until Python 3.8) complicated the task further. But simple statements can be translated more or less OK (see below.)  
-
-Some missing features can be emulated: right now, double-quoted literals are decompiled and then translated to a sequence of concatenation (see below). In Python 3.8+, they can be compiled into F-strings. Assignment in if statement now is implemented in Python 3.8, so you do not need to refactor the code and push assignment out of conditionals anymore. That allows tranlate more Perl while loops.   
-
 HISTORY: 
+
+Aug 22,2020: Version 0.4 was uploaded
 
 Aug 17, 2020: version 03 was uploaded 
 
