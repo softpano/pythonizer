@@ -16,11 +16,11 @@ Please note that this is an alpha version, not beta (traditionally beta are vers
 
 HISTORY: 
 
-Aug 22,2020: Version 0.4 was uploaded
+Aug 22, 2020: Version 0.4 was uploaded
 
-Aug 17, 2020: version 03 was uploaded 
+Aug 17, 2020: Version 0.3 was uploaded 
 
-Aug 5,2020: version 0.2 was uploaded. 
+Aug 05, 2020: Version 0.2 was uploaded. 
 
 Here is an fragment of translation of pre-pythonizer.pl which exists in this repositorory. It demostrates how thecurrent version if pythonizer performs:  
     
