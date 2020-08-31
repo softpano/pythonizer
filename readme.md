@@ -1,7 +1,7 @@
 ## Pythonizer: "fuzzy" translator/transformer from Perl to Python 
 ### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.5
 
-Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was  improved. may other changes and  error corrections. -p option implemented to allow refactoring  Perl source via pre-pythonlizer.pl in integrated fascion. 
+Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was  improved. may other changes and  error corrections. -r (refactor) option implemented to allow refactoring  Perl source via pre-pythonlizer.pl in integrated fascion. 
 
 Aug 22, 2020: Version 0.4 was uploaded. The walrus operator and the f-strings now are used to tranlate Perl double quoted literals if option -p iset to 3 (default is -p=3). In this case Python 3.8 is used as the target language) 
 
