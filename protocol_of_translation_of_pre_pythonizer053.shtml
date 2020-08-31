@@ -1,0 +1,894 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Full protocol of translation of pre_pythonizer.pl by version 0.53 of pythonizer</title>
+<link rel="stylesheet" type="text/css" href="../../../../CSS/main.css">
+</head>
+
+<body>
+
+<!--#include virtual="/linkheader.htm" -->
+
+<h1>Full protocol of translation of pre_pythonizer.pl by version 0.53 of pythonizer</h1>
+
+<p>This is a protocol of translation of <a href="https://github.com/softpano/pythonizer/blob/master/pre_pythonizer.pl">pre-pythonizer</a> 
+by version 0.53. The default target language now is Python 3.8, not Python 2.7 line in prev. versions.&nbsp; </p>
+
+<p><b>NOTE TO MYSELF</b>: output needs to be prepossessed in a separate file, replacing &lt; with &amp;lt; Otherwise parts of the listing&nbsp; 
+are not visible, unless viewed as the source code </p>
+
+<pre>
+PYTHONIZER: Fuzzy translator of Python to Perl. Version 0.53 (last modified 200831_1106) Running at 20/08/31 14:22
+Logs are at /tmp/Pythonizer/pythonizer.200831_1422.log. Type -h for help.
+
+================================================================================
+
+
+Results of transcription are written to the file  pre_pythonizer.py
+==========================================================================================
+
+
+   1 | 0 |      |#!/usr/bin/python3 -u
+   2 | 0 |      |#:: pre_pythonizer version 0.1
+   3 | 0 |      |#:: Stage 1 of fuzzy translation of Perl to Python
+   4 | 0 |      |#:: Nikolai Bezroukov, 2019.
+   5 | 0 |      |#:: Licensed under Perl Artistic license
+   6 | 0 |      |#::
+   7 | 0 |      |#:: This phase produced Formatted Source PERL code and XREF table.
+   8 | 0 |      |#:: Both are fuzzy, in a sense  that they are constructed using  heuristic methods.
+   9 | 0 |      |#:: In case of fuzzy reformatting prefix and suffix of the line are analyzed to determine the nesting level.
+  10 | 0 |      |#:: in most cases this is successful approach and in a few case when it is not it is easovy corrected using pragma %set_nest_level
+  11 | 0 |      |#:: That's why we use the term "fuzzy".
+  12 | 0 |      |#::
+  13 | 0 |      |#:: To be successful, this approach requires a certain (very reasonable) layout of the script.
+  14 | 0 |      |#:: But there some notable exceptions. For example, for script compressed to eliminate whitespece this approach  is not sucessful
+  15 | 0 |      |#:: You need to run them via perltidy first.
+  16 | 0 |      |#::
+  17 | 0 |      |#:: --- INVOCATION:
+  18 | 0 |      |#::
+  19 | 0 |      |#::   pre_pythonizer [options] [file_to_process]
+  20 | 0 |      |#::
+  21 | 0 |      |#::--- OPTIONS:
+  22 | 0 |      |#::
+  23 | 0 |      |#::    -v -- display version
+  24 | 0 |      |#::    -h -- this help
+  25 | 0 |      |#::    -t number -- size of tab (emulated with spaces)
+  26 | 0 |      |#::
+  27 | 0 |      |#::--- PARAMETERS:
+  28 | 0 |      |#::    1st -- name of  file
+  29 | 0 |      |#::
+  30 | 0 |      |#::    NOTE: With option -p the progrem can be used as a stage fo the pipe. FOr example#::
+  31 | 0 |      |#::       cat my_script.sh | pre_pythonizer | pythonizer > my_script.py
+  32 | 0 |      |#--- Development History
+  33 | 0 |      |#
+  34 | 0 |      |# Ver      Date        Who        Modification
+  35 | 0 |      |# ====  ==========  ========  ==============================================================
+  36 | 0 |      |# 0.10  2019/10/14  BEZROUN   Initial implementation
+  37 | 0 |      |# 0.11  2019/11/20  BEZROUN   Minor changes in legend and help screen
+  38 | 0 |      |# 0.20  2020/08/20  BEZROUN   The source reorganized into "subroutines-first" fashion
+  39 | 0 |      |
+  40 | 0 |      |#=========================== START =========================================================
+  41 | 0 |      |
+  42 | 0 |      |import sys
+  42 | 0 |      |import re
+  42 | 0 |      |import os
+  42 | 0 |      |import fileinput
+  42 | 0 |      |#NOTRAN: use v5.10;
+  43 | 0 |      |#  use Modern::Perl;
+  44 | 0 |      |#NOTRAN: use warnings;
+  45 | 0 |      |#NOTRAN: use strict 'subs';
+  46 | 0 |      |#NOTRAN: use feature 'state';
+  47 | 0 |      |#NOTRAN: use Getopt::Std;
+  48 | 0 |      |
+  49 | 0 |      |VERSION='0.1' # alpha vestion
+                                                                                                  #PL:    $VERSION='0.1';
+  50 | 0 |      |debug=1 # 0 production mode 1 - development/testing mode. 2-9 debugging modes
+                                                                                                  #PL:    $debug=1;
+  51 | 0 |      |
+  52 | 0 |      |#$debug=1;  # enable saving each source version without compile errors to GIT
+  53 | 0 |      |#$debug=2; # starting from debug=2 the results are not written to disk
+  54 | 0 |      |#$debug=3; # starting from Debug=3 only the first chunk processed
+  55 | 0 |      |STOP_STRING='' # In debug mode gives you an ability to switch trace on any type of error message for example S (via hook in logme).
+                                                                                                  #PL:    $STOP_STRING='';
+  56 | 0 |      |use_git_repo=''                                                                  #PL: $use_git_repo='';
+  57 | 0 |      |
+  58 | 0 |      |# You can switch on tracing from particular line of source ( -1 to disable)
+  59 | 0 |      |breakpoint=-1                                                                    #PL: $breakpoint=-1;
+  60 | 0 |      |SCRIPT_NAME=__file__[__file__.rfind('/')+1:]                                     #PL: $SCRIPT_NAME=substr($0,rindex($0,'/')+1);
+  61 | 0 |      |if (dotpos:=SCRIPT_NAME.find('.'))>-1:                                           #PL: if( ($dotpos=index($SCRIPT_NAME,'.'))>-1 ) {
+  62 | 1 |      |   SCRIPT_NAME=SCRIPT_NAME[0:dotpos]                                             #PL: $SCRIPT_NAME=substr($SCRIPT_NAME,0,$dotpos);
+  64 | 0 |      |
+  65 | 0 |      |OS=os.name # $^O is built-in Perl variable that contains OS name
+                                                                                                  #PL:    $OS=$^O;
+  66 | 0 |      |if OS=='cygwin':                                                                 #PL: if($OS eq 'cygwin' ){
+  67 | 1 |      |   HOME='/cygdrive/f/_Scripts'    # $HOME/Archive is used for backups
+                                                                                                  #PL:       $HOME="/cygdrive/f/_Scripts";
+  68 | 0 |      |elif OS=='linux':                                                                #PL: elsif($OS eq 'linux' ){
+  69 | 1 |      |   HOME=os.environ['HOME']    # $HOME/Archive is used for backups
+                                                                                                  #PL:       $HOME=$ENV{'HOME'};
+  71 | 0 |      |LOG_DIR=f"/tmp/{SCRIPT_NAME}"                                                    #PL: $LOG_DIR="/tmp/$SCRIPT_NAME";
+  72 | 0 |      |FormattedMain=('sub main\n','{\n')                                               #PL: @FormattedMain=("sub main\n","{\n");
+  73 | 0 |      |FormattedSource=FormattedSub.copy                                                #PL: @FormattedSource=@FormattedSub=@FormattedData=();
+  74 | 0 |      |mainlineno=len(FormattedMain) # we need to reserve one line for sub main
+                                                                                                  #PL:    $mainlineno=scalar( @FormattedMain);
+  75 | 0 |      |sourcelineno=sublineno=datalineno=0                                              #PL: $sourcelineno=$sublineno=$datalineno=0;
+  76 | 0 |      |
+  77 | 0 |      |tab=4                                                                            #PL: $tab=4;
+  78 | 0 |      |nest_corrections=0                                                               #PL: $nest_corrections=0;
+  79 | 0 |      |keyword={'if': 1,'while': 1,'unless': 1,'until': 1,'for': 1,'foreach': 1,'given': 1,'when': 1,'default': 1}
+                                                                                                  #PL: %keyword=('if'=>1,'while'=>1,'unless'=>1, 'until'=>1,'for'=>1,'foreach'=>1,'give
+                                                                                                  Cont:  n'=>1,'when'=>1,'default'=>1);
+  80 | 0 |      |
+  81 | 0 |      |logme(['D',1,2]) # E and S to console, everything to the log.
+                                                                                                  #PL:    logme('D',1,2);
+  82 | 0 |      |banner([LOG_DIR,SCRIPT_NAME,'PREPYTHONIZER: Phase 1 of pythonizer',30]) # Opens SYSLOG and print STDERRs banner; parameter 4 is log retention period
+                                                                                                  #PL:    banner($LOG_DIR,$SCRIPT_NAME,'PREPYTHONIZER: Phase 1 of pythonizer',30);
+  83 | 0 |      |get_params() # At this point debug  flag can be reset
+                                                                                                  #PL:    get_params();
+  84 | 0 |      |if debug>0:                                                                      #PL: if( $debug>0 ){
+  85 | 1 |      |   logme(['D',2,2])    # Max verbosity
+                                                                                                  #PL:       logme('D',2,2);
+  86 | 1 |      |   print(f"ATTENTION!!! {SCRIPT_NAME} is working in debugging mode {debug} with autocommit of source to {HOME}/Archive\n",file=sys.stderr,end="")
+                                                                                                  #PL: print STDERR "ATTENTION!!! $SCRIPT_NAME is working in debugging mode $debug with
+                                                                                                  Cont:   autocommit of source to $HOME/Archive\n";
+  87 | 1 |      |   autocommit([f"{HOME}/Archive",use_git_repo])    # commit source archive directory (which can be controlled by GIT)
+                                                                                                  #PL:       autocommit("$HOME/Archive",$use_git_repo);
+  89 | 0 |      |print(f"Log is written to {LOG_DIR}, The original file will be saved as {fname}.original unless this file already exists ")
+                                                                                                  #PL: say "Log is written to $LOG_DIR, The original file will be saved as $fname.origi
+                                                                                                  Cont:  nal unless this file already exists ";
+  90 | 0 |      |print('=' * 80,'\n',file=sys.stderr)                                             #PL: say STDERR  "=" x 80,"\n";
+  91 | 0 |      |
+  92 | 0 |      |#
+  93 | 0 |      |# Main loop initialization variables
+  94 | 0 |      |#
+  95 | 0 |      |new_nest=cur_nest=0                                                              #PL: $new_nest=$cur_nest=0;
+  96 | 0 |      |#$top=0; $stack[$top]='';
+  97 | 0 |      |lineno=noformat=SubsNo=0                                                         #PL: $lineno=$noformat=$SubsNo=0;
+  98 | 0 |      |here_delim='\n' # impossible combination
+                                                                                                  #PL:    $here_delim="\n";
+  99 | 0 |      |InfoTags=''                                                                      #PL: $InfoTags='';
+ 100 | 0 |      |SourceText=sys.stdin.readlines().copy                                            #PL: @SourceText=&lt;STDIN>;
+ 101 | 0 |      |
+ 102 | 0 |      |#
+ 103 | 0 |      |# Slurp the initial comment block and use statements
+ 104 | 0 |      |#
+ 105 | 0 |      |ChannelNo=lineno=0                                                               #PL: $ChannelNo=$lineno=0;
+ 106 | 0 |      |while 1:                                                                         #PL: while(1){
+ 107 | 1 |      |   if lineno==breakpoint:                                                        #PL: if( $lineno == $breakpoint ){
+ 109 | 2 |      |      pdb.set_trace()                                                            #PL: }
+ 110 | 1 |      |   line=line.rstrip("\n")                                                        #PL: chomp($line=$SourceText[$lineno]);
+ 111 | 1 |      |   if re.match(r'^\s*$',line):                                                   #PL: if( $line=~/^\s*$/ ){
+ 112 | 2 |      |      process_line(['\n',-1000])                                                 #PL: process_line("\n",-1000);
+ 113 | 2 |      |      lineno+=1                                                                  #PL: $lineno++;
+ 114 | 2 |      |      continue                                                                   #PL: next;
+ 116 | 1 |      |   intact_line=line                                                              #PL: $intact_line=$line;
+ 117 | 1 |      |   if intact_line[0:1]=='#':                                                     #PL: if( substr($intact_line,0,1) eq '#' ){
+ 118 | 2 |      |      process_line([line,-1000])                                                 #PL: process_line($line,-1000);
+ 119 | 2 |      |      lineno+=1                                                                  #PL: $lineno++;
+ 120 | 2 |      |      continue                                                                   #PL: next;
+ 122 | 1 |      |   line=normalize_line(line)                                                     #PL: $line=normalize_line($line);
+ 123 | 1 |      |   line=line.rstrip("\n")                                                        #PL: chomp($line);
+ 124 | 1 |      |   (line)=line.split(' '),1                                                      #PL: ($line)=split(' ',$line,1);
+ 125 | 1 |      |   if re.match(r'^use\s+',line):                                                 #PL: if($line=~/^use\s+/){
+ 126 | 2 |      |      process_line([line,-1000])                                                 #PL: process_line($line,-1000);
+ 127 | 1 |      |   else:                                                                         #PL: else{
+ 128 | 2 |      |      break                                                                      #PL: last;
+ 130 | 1 |      |   lineno+=1                                                                     #PL: $lineno++;
+ 131 | 0 |      |#while
+ 132 | 0 |      |#
+ 133 | 0 |      |# MAIN LOOP
+ 134 | 0 |      |#
+ 135 | 0 |      |ChannelNo=1                                                                      #PL: $ChannelNo=1;
+ 136 | 0 | FAIL |for ;lineno&lt;SourceText;lineno+=1 #FAILTRAN
+                                                                                                  #PL:    for( ; $lineno&lt;@SourceText; $li
+ 137 | 1 |      |   line=SourceText[lineno]                                                       #PL: $line=$SourceText[$lineno];
+ 138 | 1 |      |   offset=0                                                                      #PL: $offset=0;
+ 139 | 1 |      |   line=line.rstrip("\n")                                                        #PL: chomp($line);
+ 140 | 1 |      |   intact_line=line                                                              #PL: $intact_line=$line;
+ 141 | 1 |      |   if lineno==breakpoint:                                                        #PL: if( $lineno == $breakpoint ){
+ 143 | 2 |      |      pdb.set_trace()                                                            #PL: }
+ 144 | 1 |      |   line=normalize_line(line)                                                     #PL: $line=normalize_line($line);
+ 145 | 1 |      |
+ 146 | 1 |      |   #
+ 147 | 1 |      |   # Check for HERE line
+ 148 | 1 |      |   #
+ 149 | 1 |      |
+ 150 | 1 |      |   if noformat:                                                                  #PL: if($noformat){
+ 151 | 2 |      |      if line==here_delim:                                                       #PL: if( $line eq $here_delim ){
+ 152 | 3 |      |         noformat=0                                                              #PL: $noformat=0;
+ 153 | 3 |      |         InfoTags=''                                                             #PL: $InfoTags='';
+ 155 | 2 |      |      process_line([line,-1000])                                                 #PL: process_line($line,-1000);
+ 156 | 2 |      |      continue                                                                   #PL: next;
+ 158 | 1 |      |
+ 159 | 1 |      |   if re.match("""&lt;&lt;['"](\w+)['"]$""",line):                                     #PL: if( $line =~/&lt;&lt;['"](\w+)['"]$/ ){
+ 160 | 2 |      |      here_delim=rematch.group(1)                                                #PL: $here_delim=$1;
+ 161 | 2 |      |      noformat=1                                                                 #PL: $noformat=1;
+ 162 | 2 |      |      InfoTags='HERE'                                                            #PL: $InfoTags='HERE';
+ 164 | 1 |      |   #
+ 165 | 1 |      |   # check for comment lines
+ 166 | 1 |      |   #
+ 167 | 1 |      |   if line[0:1]=='#':                                                            #PL: if( substr($line,0,1) eq '#' ){
+ 168 | 2 |      |      if line=='#%OFF':                                                          #PL: if( $line eq '#%OFF' ){
+ 169 | 3 |      |         noformat=1                                                              #PL: $noformat=1;
+ 170 | 3 |      |         here_delim='#%ON'                                                       #PL: $here_delim='#%ON';
+ 171 | 3 |      |         InfoTags='OFF'                                                          #PL: $InfoTags='OFF';
+ 172 | 2 |      |      elif re.match(r'^#%ON',line):                                              #PL: elsif( $line =~ /^#%ON/ ){
+ 173 | 3 |      |         noformat=0                                                              #PL: $noformat=0;
+ 174 | 2 |      |      elif line[0:6]=='#%NEST':                                                  #PL: elsif( substr($line,0,6) eq '#%NEST') {
+ 175 | 3 |      |         if re.match(r'^#%NEST=(\d+)',line):                                     #PL: if( $line =~ /^#%NEST=(\d+)/) {
+ 176 | 4 |      |            if cur_nest!=rematch.group(1):                                       #PL: if( $cur_nest != $1 ) {
+ 177 | 5 |      |               cur_nest=new_nest=rematch.group(1)                # correct current nesting level
+                                                                                                  #PL:                   $cur_nest=$new_nest=$1;
+ 178 | 5 |      |               InfoTags=f"={cur_nest}"                                           #PL: $InfoTags="=$cur_nest";
+ 179 | 4 |      |            else:                                                                #PL: else{
+ 180 | 5 |      |               InfoTags=f"OK {cur_nest}"                                         #PL: $InfoTags="OK $cur_nest";
+ 182 | 3 |      |         elif re.match(r'^#%NEST++',line):                                       #PL: elsif( $line =~ /^#%NEST++/) {
+ 183 | 4 |      |            cur_nest=new_nest=rematch.group(1)+1             # correct current nesting level
+                                                                                                  #PL:                $cur_nest=$new_nest=$1+1;
+ 184 | 4 |      |            InfoTags='+1'                                                        #PL: $InfoTags='+1';
+ 185 | 3 |      |         elif re.match(r'^#%NEST--',line):                                       #PL: elsif( $line =~ /^#%NEST--/) {
+ 186 | 4 |      |            cur_nest=new_nest=rematch.group(1)+1             # correct current nesting level
+                                                                                                  #PL:                $cur_nest=$new_nest=$1+1;
+ 187 | 4 |      |            InfoTags='-1'                                                        #PL: $InfoTags='-1';
+ 188 | 3 |      |         elif re.match(r'^#%ZERO\?',line):                                       #PL: elsif( $line =~ /^#%ZERO\?/) {
+ 189 | 4 |      |            if cur_nest==0:                                                      #PL: if( $cur_nest == 0 ) {
+ 190 | 5 |      |               InfoTags=f"OK {cur_nest}"                                         #PL: $InfoTags="OK $cur_nest";
+ 191 | 4 |      |            else:                                                                #PL: else{
+ 192 | 5 |      |               InfoTags='??'                                                     #PL: $InfoTags="??";
+ 193 | 5 |      |               logme(['E',f"Nest is {cur_nest} instead of zero. Reset to zero"]) #PL: logme('E',"Nest is $cur_nest instead of zero. Reset to zero");
+ 194 | 5 |      |               cur_nest=new_nest=0                                               #PL: $cur_nest=$new_nest=0;
+ 195 | 5 |      |               nest_corrections+=1                                               #PL: $nest_corrections++;
+ 199 | 2 |      |      process_line([line,-1000])                                                 #PL: process_line($line,-1000);
+ 200 | 2 |      |      continue                                                                   #PL: next;
+ 202 | 1 |      |   if re.match(r'^sub\s+(\w+)',line):                                            #PL: if( $line =~ /^sub\s+(\w+)/ ){
+ 203 | 2 |      |      SubList[rematch.group(1)]=lineno                                           #PL: $SubList{$1}=$lineno;
+ 204 | 2 |      |      SubsNo+=1                                                                  #PL: $SubsNo++;
+ 205 | 2 |      |      ChannelNo=2                                                                #PL: $ChannelNo=2;
+ 206 | 2 |      |      CommentBlock=0                                                             #PL: $CommentBlock=0;
+ 207 | 2 |      |      for backno in range(len($1)-1,0,-1):                                       #PL: for( $backno=$#FormattedMain;$backno>0;$backno-- ){
+ 208 | 3 |      |         comment=FormattedMain[backno]                                           #PL: $comment=$FormattedMain[$backno];
+ 209 | 3 |      |         if re.match(r'^\s*#',comment) or re.match(r'^\s*$',comment): #PL: if ($comment =~ /^\s*#/ || $comment =~ /^\s*$/){
+ 210 | 4 |      |            CommentBlock+=1                                                      #PL: $CommentBlock++;
+ 211 | 3 |      |         else:                                                                   #PL: else{
+ 212 | 4 |      |            break                                                                #PL: last;
+ 215 | 2 |      |      backno+=1                                                                  #PL: $backno++;
+ 216 | 2 | FAIL |      for ;backno&lt;FormattedMain;backno+=1       #FAILTRAN
+                                                                                                  #PL:          for (; $backno&lt;@FormattedMain; $
+ 217 | 3 |      |         comment=FormattedMain[backno]                                           #PL: $comment=$FormattedMain[$backno];
+ 218 | 3 |      |         process_line([comment,-1000])          #copy comment block from @FormattedMain were it got by mistake
+                                                                                                  #PL:             process_line($comment,-1000);
+ 220 | 2 |      |      for backno in range(0,CommentBlock):                                       #PL: for ($backno=0; $backno&lt;$CommentBlock; $backno++){
+ 221 | 3 |      |         pop(FormattedMain)          # then got to it by mistake
+                                                                                                  #PL:             pop(@FormattedMain);
+ 223 | 2 |      |      if cur_nest!=0:                                                            #PL: if( $cur_nest != 0 ) {
+ 224 | 3 |      |         logme(['E',f"Non zero nesting encounted for subroutine definition {rematch.group(1)}"]) #PL: logme('E',"Non zero nesting encounted for subroutine definition $1");
+ 225 | 3 |      |         if cur_nest>0:                                                          #PL: if ($cur_nest>0) {
+ 226 | 4 |      |            InfoTags='} ?'                                                       #PL: $InfoTags='} ?';
+ 227 | 3 |      |         else:                                                                   #PL: else{
+ 228 | 4 |      |            InfoTags='{ ?'                                                       #PL: $InfoTags='{ ?';
+ 230 | 3 |      |         nest_corrections+=1                                                     #PL: $nest_corrections++;
+ 232 | 2 |      |      cur_nest=new_nest=0                                                        #PL: $cur_nest=$new_nest=0;
+ 233 | 1 |      |   elif line=='__END__' or line=='__DATA__':                                     #PL: elsif( $line eq '__END__' || $line eq '__DATA__' ) {
+ 234 | 2 |      |      ChannelNo=3                                                                #PL: $ChannelNo=3;
+ 235 | 2 |      |      logme(['E',f"Non zero nesting encounted for {line}"])                      #PL: logme('E',"Non zero nesting encounted for $line");
+ 236 | 2 |      |      if cur_nest>0:                                                             #PL: if ($cur_nest>0) {
+ 237 | 3 |      |         InfoTags='} ?'                                                          #PL: $InfoTags='} ?';
+ 238 | 2 |      |      else:                                                                      #PL: else{
+ 239 | 3 |      |         InfoTags='{ ?'                                                          #PL: $InfoTags='{ ?';
+ 241 | 2 |      |      noformat=1                                                                 #PL: $noformat=1;
+ 242 | 2 |      |      here_delim='"'       # No valid here delimiter in this case !
+                                                                                                  #PL:          $here_delim='"';
+ 243 | 2 |      |      InfoTags='DATA'                                                            #PL: $InfoTags='DATA';
+ 245 | 1 |      |   if line[0:1]=='=' and line!='=cut':                                           #PL: if( substr($line,0,1) eq '=' && $line ne '=cut' ){
+ 246 | 2 |      |      noformat=1                                                                 #PL: $noformat=1;
+ 247 | 2 |      |      InfoTags='POD'                                                             #PL: $InfoTags='POD';
+ 249 | 2 |      |      here_delim='=cut'                                                          #PL: }
+ 250 | 1 |      |
+ 251 | 1 |      |   # blank lines should not be processed
+ 252 | 1 |      |   if re.match(r'^\s*$',line):                                                   #PL: if( $line =~/^\s*$/ ){
+ 253 | 2 |      |      process_line(['',-1000])                                                   #PL: process_line('',-1000);
+ 254 | 2 |      |      continue                                                                   #PL: next;
+ 256 | 1 |      |   # trim leading blanks
+ 257 | 1 |      |   if re.match(r'^\s*(\S.*$)',line):                                             #PL: if( $line=~/^\s*(\S.*$)/){
+ 258 | 2 |      |      line=rematch.group(1)                                                      #PL: $line=$1;
+ 260 | 1 |      |   # comments on the level of nesting 0 should be shifted according to nesting
+ 261 | 1 |      |   if line[0:1]=='#':                                                            #PL: if( substr($line,0,1) eq '#' ){
+ 262 | 2 |      |      process_line([line,0])                                                     #PL: process_line($line,0);
+ 263 | 2 |      |      continue                                                                   #PL: next;
+ 265 | 1 |      |
+ 266 | 1 |      |   # comments on the level of nesting 0 should start with the first position
+ 267 | 1 |      |   first_sym=line[0:1]                                                           #PL: $first_sym=substr($line,0,1);
+ 268 | 1 |      |   last_sym=line[-1:1]                                                           #PL: $last_sym=substr($line,-1,1);
+ 269 | 1 |      |   if first_sym=='{' and len(line)==1:                                           #PL: if( $first_sym eq '{' && length($line)==1 ){
+ 270 | 2 |      |      process_line(['{',0])                                                      #PL: process_line('{',0);
+ 271 | 2 |      |      cur_nest=new_nest+=1                                                       #PL: $cur_nest=$new_nest+=1;
+ 272 | 2 |      |      continue                                                                   #PL: next;
+ 273 | 1 |      |   elif first_sym=='}':                                                          #PL: elsif( $first_sym eq '}' ){
+ 274 | 2 |      |      cur_nest=new_nest-=1                                                       #PL: $cur_nest=$new_nest-=1;
+ 275 | 2 |      |      process_line(['}',0])       # shift "{" left, aligning with the keyword
+                                                                                                  #PL:           process_line('}',0);
+ 276 | 2 |      |      if line[0:1]=='}':                                                         #PL: if( substr($line,0,1) eq '}' ){
+ 277 | 3 |      |         line=line[1:]                                                           #PL: $line=substr($line,1);
+ 279 | 2 |      |      while line[0:1]==' ':                                                      #PL: while( substr($line,0,1) eq ' ' ){
+ 280 | 3 |      |         line=line[1:]                                                           #PL: $line=substr($line,1);
+ 282 | 2 |      |      # Case of }else{
+ 283 | 2 |      |      if not last_sym=='{':                                                      #PL: unless( $last_sym eq '{') {
+ 284 | 3 |      |         process_line([line,0])                                                  #PL: process_line($line,0);
+ 285 | 3 |      |         continue                                                                #PL: next;
+ 287 | 2 |      |      if cur_nest==0:                                                            #PL: if( $cur_nest==0 ){
+ 288 | 3 |      |         ChannelNo=1          # write to main
+                                                                                                  #PL:             $ChannelNo=1;
+ 291 | 1 |      |   # Step 2: check the last symbol for "{" Note: comments are prohibited on such lines
+ 292 | 1 |      |   if last_sym=='{' and len(line)>1:                                             #PL: if( $last_sym eq '{' && length($line)>1 ){
+ 293 | 2 |      |      process_line([line[0:-1],0])                                               #PL: process_line(substr($line,0,-1),0);
+ 294 | 2 |      |      process_line(['{',0])                                                      #PL: process_line('{',0);
+ 295 | 2 |      |      cur_nest=new_nest+=1                                                       #PL: $cur_nest=$new_nest+=1;
+ 296 | 2 |      |      continue                                                                   #PL: next;
+ 297 | 1 |      |   # if
+ 298 | 1 |      |   #elsif( $last_sym eq '}' && length($line)==1  ){
+ 299 | 1 |      |   # NOTE: only standalone } on the line affects effective nesting; line that has other symbols is assumed to be like if (...) { )
+ 300 | 1 |      |   # $new_nest-- is not nessary as as it is also the first symbol and nesting was already corrected
+ 301 | 1 |      |   #}
+ 302 | 1 |      |   process_line([line,offset])                                                   #PL: process_line($line,$offset);
+ 303 | 0 |      |# while
+ 304 | 0 |      |#
+ 305 | 0 |      |# Epilog
+ 306 | 0 |      |#
+ 307 | 0 |      |write_formatted_code() # write to the database.
+                                                                                                  #PL:    write_formatted_code();
+ 308 | 0 |      |sys.exit(0)                                                                      #PL: exit 0;
+ 309 | 0 |      |
+ 310 | 0 |      |#
+ 311 | 0 |      |# Subroutines
+ 312 | 0 |      |#
+ 314 | 0 |      |def normalize_line(perl_arg_array):                                              #PL: {
+ 315 | 1 |      |   line=perl_arg_array[0]                                                        #PL: my $line=$_[0];
+ 316 | 1 |      |   line=line.translate(line.maketrans(r'\t',r' '))    # eliminate \t
+                                                                                                  #PL:    $line=~tr/\t/ /;
+ 317 | 1 |      |   if line[-1:1]=='\r':                                                          #PL: if( substr($line,-1,1) eq "\r" ){
+ 318 | 2 |      |      line=line[0:-1]                                                            #PL: chop($line);
+ 320 | 1 |      |   # trip trailing blanks, if any
+ 321 | 1 |      |   if re.match(r'(^.*\S)\s+$',line):                                             #PL: if( $line=~/(^.*\S)\s+$/ ){
+ 322 | 2 |      |      line=rematch.group(1)                                                      #PL: $line=$1;
+ 324 | 1 |      |   return((line))                                                                #PL: return($line);
+ 327 | 0 |      |def process_line(perl_arg_array):                                                #PL: {
+ 328 | 1 |      |   line=perl_arg_array[0]                                                        #PL: my $line=$_[0];
+ 329 | 1 |      |   offset=perl_arg_array[1]                                                      #PL: my $offset=$_[1];
+ 330 | 1 |      |
+ 331 | 1 |      |   if len(line)>1 and line[0:1]!='#':                                            #PL: if( length($line)>1 && substr($line,0,1) ne '#' ){
+ 332 | 2 |      |      check_delimiter_balance([line])                                            #PL: check_delimiter_balance($line);
+ 334 | 1 |      |   prefix=sprintf('%4u %3d %4s',lineno,cur_nest,InfoTags)                        #PL: $prefix=sprintf('%4u %3d %4s',$lineno, $cur_nest, $InfoTags);
+ 335 | 1 |      |   if (cur_nest+offset)&lt;0 or cur_nest&lt;0:                                         #PL: if( ($cur_nest+$offset)&lt;0 || $cur_nest&lt;0 ){
+ 336 | 2 |      |      spaces=''                                                                  #PL: $spaces='';
+ 337 | 1 |      |   else:                                                                         #PL: else{
+ 338 | 2 |      |      offset=1 if ChannelNo==1 else 0                                            #PL: $offset=( $ChannelNo==1 )? 1 : 0;
+ 339 | 2 |      |      spaces=' ' * ((cur_nest+offset)*tab)                                       #PL: $spaces= ' ' x (($cur_nest+$offset)*$tab);
+ 341 | 1 |      |   line=f"{spaces}{line}\n"                                                      #PL: $line="$spaces$line\n";
+ 342 | 1 |      |   print(f"{prefix} | {line}",file=sys.stderr,end="")                            #PL: print STDERR "$prefix | $line";
+ 343 | 1 |      |   if ChannelNo==0:                                                              #PL: if( $ChannelNo==0) {
+ 344 | 2 |      |      FormattedSource[sourcelineno+=1]=line                                      #PL: $FormattedSource[$sourcelineno++]=$line;
+ 345 | 1 |      |   elif ChannelNo==1:                                                            #PL: elsif($ChannelNo==1){
+ 346 | 2 |      |      FormattedMain[mainlineno+=1]=line                                          #PL: $FormattedMain[$mainlineno++]=$line;
+ 347 | 1 |      |   elif ChannelNo==2:                                                            #PL: elsif($ChannelNo==2){
+ 348 | 2 |      |      FormattedSub[sublineno+=1]=line                                            #PL: $FormattedSub[$sublineno++]=$line;
+ 349 | 1 |      |   elif ChannelNo==3:                                                            #PL: elsif($ChannelNo==3){
+ 350 | 2 |      |      FormattedData[datalineno+=1]=line                                          #PL: $FormattedData[$datalineno++]=$line;
+ 351 | 1 |      |   else:                                                                         #PL: else{
+ 352 | 2 |      |      logme(['S',f"Internal error. Channel is outside rance or 0-2. The value is {ChannelNo}. Exiting... "])
+                                                                                                  #PL: logme('S',"Internal error. Channel is outside rance or 0-2. The value is $Channe
+                                                                                                  Cont:  lNo. Exiting... ");
+ 353 | 2 |      |      sys.exit(255)                                                              #PL: exit 255;
+ 355 | 1 |      |   cur_nest=new_nest                                                             #PL: $cur_nest=$new_nest;
+ 356 | 1 |      |   if noformat==0:                                                               #PL: if( $noformat==0 ){ $InfoTags='' }
+ 356 | 2 |      |      InfoTags=''                                                                #PL: $InfoTags='' }
+ 359 | 0 |      |def write_formatted_code(perl_arg_array):                                        #PL: {
+ 360 | 1 |      |   output_file=fname                                                             #PL: my $output_file=$fname;
+ 362 | 1 |      |   push(FormattedMain,'}')                                                       #PL: push(@FormattedMain,'}');
+ 363 | 1 |      |   if os.path.exists(fname):                                                     #PL: if( -e $fname ){
+ 364 | 2 |      |      subprocess_rc,default_var = subprocess.getstatusoutput("cp $fname  $fname.original") #PL: `cp $fname  $fname.original`;
+ 366 | 1 |      |   push(FormattedSource,FormattedSub)                                            #PL: push(@FormattedSource,@FormattedSub);
+ 367 | 1 |      |   push(FormattedSource,FormattedMain)                                           #PL: push(@FormattedSource,@FormattedMain);
+ 368 | 1 |      |   push(FormattedSource,'main()\n')    # generate call to main
+                                                                                                  #PL:    push(@FormattedSource,"main()\n");
+ 369 | 1 |      |   push(FormattedSource,FormattedData)                                           #PL: push(@FormattedSource,@FormattedData);
+ 370 | 1 |      |   if os.path.isfile(''): SYSFORM=open('','r')                                   #PL: open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for writing");
+ 370 | 1 |      |   else: os.exit()                                                               #PL: open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for writing");
+ 371 | 1 |      |   print(FormattedSource,file=SYSFORM,end="")                                    #PL: print SYSFORM @FormattedSource;
+ 372 | 1 |      |   SYSFORM.f.close;                                                              #PL: close SYSFORM;
+ 373 | 1 |      |   subprocess_rc,default_var = subprocess.getstatusoutput("perl -cw  $output_file") #PL: `perl -cw  $output_file`;
+ 374 | 1 |      |   if subprocess_rc>0:                                                           #PL: if(  $? > 0 ){
+ 375 | 2 |      |      logme(['E',f"Checking reformatted source code via perl -cw produced some errors (RC={subprocess_rc}). Please correct them before proceeding"])
+                                                                                                  #PL: logme('E',"Checking reformatted source code via perl -cw produced some errors (R
+                                                                                                  Cont:  C=$?). Please correct them before proceeding");
+ 377 | 1 |      |   output_file=f"{LOG_DIR}/fname.xref"                                           #PL: $output_file="$LOG_DIR/fname.xref";
+ 378 | 1 |      |   if os.path.isfile(''): SYSFORM=open('','r')                                   #PL: open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for writing");
+ 378 | 1 |      |   else: os.exit()                                                               #PL: open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for writing");
+ 379 | 1 |      |
+ 380 | 1 |      |   for i in range(0,len(SourceText)):                                            #PL: for( $i=0; $i&lt;@SourceText; $i++ ){
+ 381 | 2 |      |      line=SourceText[i]                                                         #PL: $line=$SourceText[$i];
+ 382 | 2 |      |      if line[0:1]=='#' or re.match(r'(\s+)\#',line):                            #PL: next if (substr($line,0,1) eq '#' || $line=~/(\s+)\#/ );
+ 382 | 3 |      |         continue                                                                #PL: }
+ 383 | 2 |      |      line=line.rstrip("\n")                                                     #PL: chomp($line);
+ 384 | 2 |      |      while(k:=line.find('$'))>-1:                                               #PL: while( ($k=index($line,'$'))>-1 ){
+ 385 | 3 |      |         line=line[k+1:]                                                         #PL: $line=substr($line,$k+1);
+ 386 | 3 |      |         if not re.match(r'^(\w+)',line):                                        #PL: next unless( $line=~/^(\w+)/ );
+ 386 | 4 |      |            continue                                                             #PL: }
+ 387 | 3 |      |         if rematch.group(1)=='_' or re.match(r'[1-9]',rematch.group(1)): #PL: next if( $1 eq '_' || $1 =~/[1-9]/ );
+ 387 | 4 |      |            continue                                                             #PL: }
+ 388 | 3 |      |         k+=len(rematch.group(1))+1                                              #PL: $k+=length($1)+1;
+ 389 | 3 |      |         var='$' + rematch.group(1)                                              #PL: $var='$'.$1;
+ 390 | 3 |      |         if re.match(r'^\w+\s*[&lt;>=+-]\s*[+-]?\d+',line):                         #PL: if($line=~/^\w+\s*[&lt;>=+-]\s*[+-]?\d+/ ){
+ 391 | 4 |      |            if not var in type:                                                  #PL: unless(exists($type{$var})) {$type{$var}='int';}
+ 391 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';}
+ 392 | 3 |      |         elif re.match(r'^\w+\s*=\s*\$\#\w+',line):                              #PL: elsif( $line=~/^\w+\s*=\s*\$\#\w+/ ){
+ 393 | 4 |      |            if not var in type:                                                  #PL: unless( exists($type{$var}) ) {$type{$var}='int';}
+ 393 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';}
+ 394 | 3 |      |         elif re.match(r'^\w+\s*[+-=&lt;>!]?=\s*(index|length|scalar)',line): #PL: elsif( $line=~/^\w+\s*[+-=&lt;>!]?=\s*(index|length|scalar)/ ){
+ 395 | 4 |      |            if not var in type:                                                  #PL: unless( exists($type{$var}) ) {$type{$var}='int';}
+ 395 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';}
+ 396 | 3 |      |         elif re.match(r'^\w+\s*[+-=&lt;>!]?=\s*[+-]?\d+',line):                    #PL: elsif( $line=~/^\w+\s*[+-=&lt;>!]?=\s*[+-]?\d+/ ){
+ 397 | 4 |      |            if not var in type:                                                  #PL: unless( exists($type{$var}) ) {$type{$var}='int';}
+ 397 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';}
+ 398 | 3 |      |         elif re.match(r'^\w+\s*\[.+?\]?\s*(\$\w+)',line) and rematch.group(1) in type:
+                                                                                                  #PL: elsif( $line=~/^\w+\s*\[.+?\]?\s*(\$\w+)/ && exists($type{$1}) && $type{$1} eq '
+                                                                                                  Cont:  int' ) {
+ 399 | 4 |      |            if not var in type:                                                  #PL: unless( exists($type{$var}) ) {$type{$var}='int';};
+ 399 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';};
+ 400 | 3 |      |         elif re.match(r'^\w+\s*\[.+?\]?\s*[+-=&lt;>!]=\s*\d+',line): #PL: elsif( $line=~/^\w+\s*\[.+?\]?\s*[+-=&lt;>!]=\s*\d+/ ){
+ 401 | 4 |      |            #Array
+ 402 | 4 |      |            if not var in type:                                                  #PL: unless( exists($type{$var}) ) {$type{$var}='int';}
+ 402 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';}
+ 403 | 3 |      |         elif re.match(r'^\w+\s*\{.+?\}\s*[+-=&lt;>!]?=\s*\d+',line): #PL: elsif( $line=~/^\w+\s*\{.+?\}\s*[+-=&lt;>!]?=\s*\d+/ ){
+ 404 | 4 |      |            #Hash
+ 405 | 4 |      |            if not var in type:                                                  #PL: unless( exists($type{$var}) ) {$type{$var}='int';}
+ 405 | 5 |      |               type[var]='int'                                                   #PL: $type{$var}='int';}
+ 407 | 3 |      |
+ 408 | 3 |      |         if var in dict:                                                         #PL: if( exists($dict{$var}) ){
+ 409 | 4 |      |            dict[var]+=', ' + i                                                  #PL: $dict{$var}.=', '.$i;
+ 410 | 3 |      |         else:                                                                   #PL: else{
+ 411 | 4 |      |            dict[var]+=i                                                         #PL: $dict{$var}.=$i;
+ 413 | 3 |      |
+ 416 | 1 |      |   write_line(['\n\nCROSS REFERENCE TABLE\n'])                                   #PL: write_line("\n\nCROSS REFERENCE TABLE\n");
+ 417 | 1 |      |   i=0                                                                           #PL: $i=0;
+ 418 | 1 |      |   for var in dict..keys():                                                      #PL: foreach $var (keys(%dict)) {
+ 419 | 2 |      |      prefix=type[var] if var in type else 'str'                                 #PL: $prefix=( exists($type{$var}) ) ? $type{$var} : 'str';
+ 420 | 2 |      |      xref_table[i]=f"{prefix} {var} {dict{var}}\n"                              #PL: $xref_table[$i]="$prefix $var $dict{$var}\n";
+ 421 | 2 |      |      i+=1                                                                       #PL: $i++;
+ 423 | 1 |      |   xref_table=sort(xref_table)                                                   #PL: @xref_table=sort(@xref_table);
+ 424 | 1 |      |
+ 425 | 1 |      |   if os.path.isfile(''): SYSFORM=open('','r')                                   #PL: open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for writing");
+ 425 | 1 |      |   else: os.exit()                                                               #PL: open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for writing");
+ 426 | 1 |      |   for i in range(0,len(xref_table)):                                            #PL: for( $i=0; $i&lt;@xref_table; $i++ ){
+ 427 | 2 |      |      write_line([xref_table[i]])                                                #PL: write_line($xref_table[$i]);
+ 429 | 1 |      |   write_line(['\nSUBROUTINES\n'])                                               #PL: write_line("\nSUBROUTINES\n");
+ 430 | 1 |      |   for sub in SubList..keys():                                                   #PL: foreach $sub (keys(%SubList)){
+ 431 | 2 |      |      write_line([f"{sub}: {SubList{sub}}"])                                     #PL: write_line("$sub: $SubList{$sub}");
+ 433 | 1 |      |   SYSFORM.f.close;                                                              #PL: close SYSFORM;
+ 436 | 0 |      |def write_line(perl_arg_array):                                                  #PL: {
+ 437 | 1 |      |   myline=perl_arg_array[0]                                                      #PL: my $myline=$_[0];
+ 438 | 1 |      |   print(myline,file=sys.stderr)                                                 #PL: say STDERR $myline;
+ 439 | 1 |      |   print(myline,file=SYSFORM)                                                    #PL: say SYSFORM $myline;
+ 441 | 0 |      |#
+ 442 | 0 |      |# Check delimiters balance without lexical parcing of the string
+ 443 | 0 |      |#
+ 445 | 0 |      |def check_delimiter_balance(perl_arg_array):                                     #PL: {
+ 446 | 1 |      |   i=None                                                                        #PL: my $i;
+ 447 | 1 |      |   scan_SourceText=perl_arg_array[0]                                             #PL: my $scan_SourceText=$_[0];
+ 448 | 1 |      |   sq_br=0                                                                       #PL: $sq_br=0;
+ 449 | 1 |      |   round_br=0                                                                    #PL: $round_br=0;
+ 450 | 1 |      |   curve_br=0                                                                    #PL: $curve_br=0;
+ 451 | 1 |      |   single_quote=0                                                                #PL: $single_quote=0;
+ 452 | 1 |      |   double_quote=0                                                                #PL: $double_quote=0;
+ 453 | 1 |      |   if len(perl_arg_array[0])==1 or re.match(r'.\s*#',line):    # no balance in one symbol line.
+                                                                                                  #PL:       return if( length($_[0])==1 || $line=~/.\s*#/);
+ 453 | 2 |      |      return()                                                                   #PL: }
+ 454 | 1 |      |   for i in range(0,len(scan_SourceText)):                                       #PL: for( $i=0; $i&lt;length($scan_SourceText); $i++ ){
+ 455 | 2 |      |      s=scan_SourceText[i:i + 1]                                                 #PL: $s=substr($scan_SourceText,$i,1);
+ 456 | 2 |      |      if s=='{':                                                                 #PL: if( $s eq '{' ){ $curve_br++;} elsif( $s eq '}' ){ $curve_br--; }
+ 456 | 3 |      |         curve_br+=1                                                             #PL: $curve_br++;} elsif( $s eq '}' ){ $curve_br--; }
+ 456 | 2 |      |      elif s=='}':                                                               #PL: elsif( $s eq '}' ){ $curve_br--; }
+ 456 | 3 |      |         curve_br-=1                                                             #PL: $curve_br--; }
+ 457 | 2 |      |      if s=='(':                                                                 #PL: if( $s eq '(' ){ $round_br++;} elsif( $s eq ')' ){ $round_br--; }
+ 457 | 3 |      |         round_br+=1                                                             #PL: $round_br++;} elsif( $s eq ')' ){ $round_br--; }
+ 457 | 2 |      |      elif s==')':                                                               #PL: elsif( $s eq ')' ){ $round_br--; }
+ 457 | 3 |      |         round_br-=1                                                             #PL: $round_br--; }
+ 458 | 2 |      |      if s=='[':                                                                 #PL: if( $s eq '[' ){ $sq_br++;} elsif( $s eq ']' ){ $sq_br--; }
+ 458 | 3 |      |         sq_br+=1                                                                #PL: $sq_br++;} elsif( $s eq ']' ){ $sq_br--; }
+ 458 | 2 |      |      elif s==']':                                                               #PL: elsif( $s eq ']' ){ $sq_br--; }
+ 458 | 3 |      |         sq_br-=1                                                                #PL: $sq_br--; }
+ 459 | 2 |      |
+ 460 | 2 |      |      if s=="'":                                                                 #PL: if(  $s eq "'"  ){ $single_quote++;}
+ 460 | 3 |      |         single_quote+=1                                                         #PL: $single_quote++;}
+ 461 | 2 |      |      if s=='"':                                                                 #PL: if(  $s eq '"'  ){ $double_quote++;}
+ 461 | 3 |      |         double_quote+=1                                                         #PL: $double_quote++;}
+ 463 | 1 |      |   if single_quote 2==1:                                                         #PL: if(  $single_quote%2==1  ){ $InfoTags.="'";}
+ 463 | 2 |      |      InfoTags+="'"                                                              #PL: $InfoTags.="'";}
+ 464 | 1 |      |   elif double_quote 2==1:                                                       #PL: elsif(  $double_quote%2==1  ){  $InfoTags.='"'; }
+ 464 | 2 |      |      InfoTags+='"'                                                              #PL: $InfoTags.='"'; }
+ 465 | 1 |      |
+ 466 | 1 |      |   first_word=rematch.group(1) if re.match(r'(\w+)',line) else '' #PL: $first_word=( $line=~/(\w+)/ ) ? $1 : '';
+ 467 | 1 |      |
+ 468 | 1 |      |   if single_quote 2==0 and double_quote 2==0:                                   #PL: if( $single_quote%2==0 && $double_quote%2==0 ){
+ 469 | 2 |      |      if not first_word in keyword:                                              #PL: unless( exists($keyword{$first_word}) ){
+ 470 | 3 |      |         if curve_br>0 and line.find('\{')==-1:                                  #PL: if( $curve_br>0 && index($line,'\{') == -1 ){
+ 471 | 4 |      |            inbalance='{'                                                        #PL: $inbalance ='{';
+ 472 | 4 |      |            if single_quote==0 and double_quote==0:                              #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '}' on the following line:");
+ 472 | 5 |      |               logme('W',"Possible missing '}' on the following line:")
+                                                                                                  #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '}' on t
+                                                                                                  Cont:  he following line:");
+ 473 | 3 |      |         elif curve_br&lt;0:                                                        #PL: elsif(  $curve_br&lt;0  ){
+ 474 | 4 |      |            inbalance='}'                                                        #PL: $inbalance ='}';
+ 475 | 4 |      |            if single_quote==0 and double_quote==0:                              #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '{' on the following line:  ");
+ 475 | 5 |      |               logme('W',"Possible missing '{' on the following line:  ")
+                                                                                                  #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '{' on t
+                                                                                                  Cont:  he following line:  ");
+ 478 | 2 |      |
+ 479 | 2 |      |      if round_br>0 and line.find('\(')==-1:                                     #PL: if(  $round_br>0 && index($line,'\(') == -1 ){
+ 480 | 3 |      |         inbalance='('                                                           #PL: $inbalance ='(';
+ 481 | 3 |      |         if single_quote==0 and double_quote==0:                                 #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing ')' on the following line:");
+ 481 | 4 |      |            logme('W',"Possible missing ')' on the following line:")
+                                                                                                  #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing ')' on t
+                                                                                                  Cont:  he following line:");
+ 482 | 2 |      |      elif round_br&lt;0:                                                           #PL: elsif(  $round_br&lt;0  ){
+ 483 | 3 |      |         inbalance=')'                                                           #PL: $inbalance =')';
+ 484 | 3 |      |         if single_quote==0 and double_quote==0:                                 #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '(' on the following line:");
+ 484 | 4 |      |            logme('W',"Possible missing '(' on the following line:")
+                                                                                                  #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '(' on t
+                                                                                                  Cont:  he following line:");
+ 486 | 2 |      |
+ 487 | 2 |      |      if sq_br>0 and line.find('\[')==-1:                                        #PL: if(  $sq_br>0 && index($line,'\[') == -1  ){
+ 488 | 3 |      |         inbalance='['                                                           #PL: $inbalance ='[';
+ 489 | 3 |      |         if single_quote==0 and double_quote==0:                                 #PL: ( $single_quote==0 && $double_quote==0 ) &&logme('W',"Possible missing ']' on the following line:");
+ 489 | 4 |      |            logme('W',"Possible missing ']' on the following line:")
+                                                                                                  #PL: ( $single_quote==0 && $double_quote==0 ) &&logme('W',"Possible missing ']' on th
+                                                                                                  Cont:  e following line:");
+ 490 | 2 |      |      elif sq_br&lt;0:                                                              #PL: elsif(  $sq_br&lt;0  ){
+ 491 | 3 |      |         inbalance=']'                                                           #PL: $inbalance =']';
+ 492 | 3 |      |         if single_quote==0 and double_quote==0:                                 #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '[' on the following line:");
+ 492 | 4 |      |            logme('W',"Possible missing '[' on the following line:")
+                                                                                                  #PL: ( $single_quote==0 && $double_quote==0 ) && logme('W',"Possible missing '[' on t
+                                                                                                  Cont:  he following line:");
+ 495 | 1 |      |
+ 497 | 0 |      |#
+ 498 | 0 |      |# process parameters and options
+ 499 | 0 |      |#
+ 501 | 0 |      |def get_params(perl_arg_array):                                                  #PL: {
+ 502 | 1 |      |   getopts(['fhrb:t:v:d:',\options])                                             #PL: getopts("fhrb:t:v:d:",\%options);
+ 503 | 1 |      |   if 'v' in options:                                                            #PL: if(  exists $options{'v'} ){
+ 504 | 2 |      |      if re.match(r'\d',options['v']) and options['v']&lt;3:                        #PL: if( $options{'v'} =~/\d/ && $options{'v'}&lt;3  ){
+ 505 | 3 |      |         logme(['D',options['v'],])                                              #PL: logme('D',$options{'v'},);
+ 506 | 2 |      |      else:                                                                      #PL: else{
+ 507 | 3 |      |         logme(['D',3,3])          # add warnings
+                                                                                                  #PL:             logme('D',3,3);
+ 510 | 1 |      |   if 'h' in options:                                                            #PL: if(  exists $options{'h'} ){
+ 511 | 2 |      |      helpme()                                                                   #PL: helpme();
+ 513 | 1 |      |
+ 514 | 1 |      |
+ 515 | 1 |      |   if 'f' in options:                                                            #PL: if(  exists $options{'f'}  ){
+ 516 | 2 |      |      write_FormattedSource=1                                                    #PL: $write_FormattedSource=1;
+ 518 | 1 |      |
+ 519 | 1 |      |   if 't' in options:                                                            #PL: if(  exists $options{'t'}  ){
+ 520 | 2 |      |      if options['t']>0 and options['t']&lt;10:                                     #PL: if( $options{'t'}>0  && $options{'t'}&lt;10 ){
+ 521 | 3 |      |         tab=options['t']                                                        #PL: $tab=$options{'t'};
+ 522 | 2 |      |      else:                                                                      #PL: else {
+ 523 | 3 |      |         raise(f"Wrong value of option -t (tab size): {options}('t')\n") #PL: die("Wrong value of option -t (tab size): $options('t')\n");
+ 526 | 1 |      |
+ 527 | 1 |      |   if 'b' in options:                                                            #PL: if(  exists $options{'b'}  ){
+ 528 | 2 |      |      if options['b']>0 and options['t']&lt;1000:                                   #PL: if( $options{'b'}>0  && $options{'t'}&lt;1000 ){
+ 529 | 3 |      |         breakpoint=options['b']                                                 #PL: $breakpoint=$options{'b'};
+ 530 | 2 |      |      else:                                                                      #PL: else {
+ 531 | 3 |      |         raise(f"Wrong value of option -b (line for debugger breakpoint): {options}('b')\n") #PL: die("Wrong value of option -b (line for debugger breakpoint): $options('b')\n");
+ 534 | 1 |      |
+ 535 | 1 |      |   if 'd' in options:                                                            #PL: if(  exists $options{'d'}  ){
+ 536 | 2 |      |      if re.match(r'\d',debug):                                                  #PL: if( $debug =~/\d/ ){
+ 537 | 3 |      |         debug=options['d']                                                      #PL: $debug=$options{'d'};
+ 538 | 2 |      |      elif options['d']=='':                                                     #PL: elsif( $options{'d'} eq '' ){
+ 539 | 3 |      |         debug=1                                                                 #PL: $debug=1;
+ 540 | 2 |      |      else:                                                                      #PL: else{
+ 541 | 3 |      |         raise(f"Wrong value of option -d: {options}('d')\n")                    #PL: die("Wrong value of option -d: $options('d')\n");
+ 544 | 1 |      |
+ 545 | 1 |      |   if len(sys.argv)==0:                                                          #PL: if( scalar(@ARGV)==0 ){
+ 546 | 2 |      |      if os.path.isfile('-'): sys.stdin=open('-','r')                            #PL: open (STDIN, ">-");
+ 546 | 2 |      |      else: os.exit()                                                            #PL: open (STDIN, ">-");
+ 547 | 2 |      |      write_FormattedSource=0                                                    #PL: $write_FormattedSource=0;
+ 548 | 2 |      |      return()                                                                   #PL: return;
+ 550 | 1 |      |
+ 551 | 1 |      |   if len(sys.argv)==1:                                                          #PL: if( scalar(@ARGV)==1 ){
+ 552 | 2 |      |      fname=sys.argv[0]                                                          #PL: $fname=$ARGV[0];
+ 553 | 2 |      |      if not os.path.isfile(fname):                                              #PL: unless( -f $fname ){
+ 554 | 3 |      |         raise(f"Unable to open file {sys.argv[0]}")                             #PL: die ("Unable to open file $ARGV[0]");
+ 556 | 2 |      |      sys.stdin=open(f"{fname}",'w')                                             #PL: open (STDIN, "&lt;$fname");
+ 557 | 1 |      |   else:                                                                         #PL: else {
+ 558 | 2 |      |      args=sys.argv).join(' ')                                                   #PL: $args=join(' ', @ARGV);
+ 560 | 2 |      |      raise(f"Too many arguments: {args}")                                       #PL: }
+ 561 | 1 |      |
+ 563 | 0 |      |#
+ 564 | 0 |      |###================================================= NAMESPACE sp: My SP toolkit subroutines
+ 565 | 0 |      |#
+ 566 | 0 |      |#
+ 567 | 0 |      |# Create backup and commit script to GIT repository if there were changes from previous version.
+ 568 | 0 |      |#
+ 569 | 0 |      |#package sp;
+ 571 | 0 |      |def autocommit(perl_arg_array):                                                  #PL: {
+ 572 | 1 |      |   # parameters
+ 573 | 1 |      |   archive_dir=perl_arg_array[0]    # typically home or $HOME/bin
+                                                                                                  #PL: my $archive_dir=$_[0];
+ 574 | 1 |      |   git_repo=perl_arg_array[1]    # GIT dir
+                                                                                                  #PL: my $git_repo=$_[1];
+ 575 | 1 |      |   script_name=__file__[__file__.rfind('/')+1:]                                  #PL: my $script_name=substr($0,rindex($0,'/')+1);
+ 576 | 1 |      |
+ 577 | 1 |      |   #
+ 578 | 1 |      |   #  commit each running version to the repository to central GIT
+ 579 | 1 |      |   #
+ 580 | 1 |      |
+ 581 | 1 |      |   script_timestamp=None                                                         #PL: my $script_timestamp;
+ 582 | 1 |      |   script_delta=1                                                                #PL: my $script_delta=1;
+ 583 | 1 |      |   host=subprocess.check_output("hostname -s")                                   #PL: my $host=`hostname -s`;
+ 584 | 1 |      |   host=host.rstrip("\n")                                                        #PL: chomp($host);
+ 585 | 1 |      |   if !os.path.isdir(archive_dir):                                               #PL: ( ! -d $archive_dir ) && `mkdir -p $archive_dir`;
+ 585 | 2 |      |      subprocess.check_output("mkdir -p $archive_dir")                           #PL: ( ! -d $archive_dir ) && `mkdir -p $archive_dir`;
+ 586 | 1 |      |   if os.path.isfile(f"{archive_dir}/{script_name}"):                            #PL: if(  -f "$archive_dir/$script_name"  ){
+ 587 | 2 |      |      if (os.stat(__file__).st_size)==(os.stat(f"{archive_dir}/{script_name}").st_size): #PL: if( (-s $0 ) == (-s "$archive_dir/$script_name")   ){
+ 588 | 3 |      |         subprocess_rc,default_var = subprocess.getstatusoutput("diff $0 $archive_dir/$script_name") #PL: `diff $0 $archive_dir/$script_name`;
+ 589 | 3 |      |         script_delta=0 if subprocess_rc==0 else 1                               #PL: $script_delta=( $? == 0 )? 0: 1;
+ 591 | 2 |      |
+ 592 | 2 |      |      if script_delta:                                                           #PL: if( $script_delta ){
+ 593 | 3 |      |         script_timestamp=script_timestamp.rstrip("\n")                          #PL: chomp($script_timestamp=`date -r $archive_dir/$script_name +"%y%m%d_%H%M"`);
+ 594 | 3 |      |         subprocess_rc,default_var = subprocess.getstatusoutput("mv $archive_dir/$script_name $archive_dir/$script_name.$script_timestamp") #PL: `mv $archive_dir/$script_name $archive_dir/$script_name.$script_timestamp`;
+ 595 | 3 |      |
+ 598 | 1 |      |   if script_delta:                                                              #PL: ($script_delta) && `cp -p $0 $archive_dir/$script_name`;
+ 598 | 2 |      |      subprocess.check_output("cp -p $0 $archive_dir/$script_name") #PL: ($script_delta) && `cp -p $0 $archive_dir/$script_name`;
+ 599 | 1 |      |   if git_repo:                                                                  #PL: ($git_repo) && `cd $archive_dir && git commit $0`;
+ 599 | 2 |      |      subprocess.check_output("cd $archive_dir && git commit $0") #PL: ($git_repo) && `cd $archive_dir && git commit $0`;
+ 600 | 0 |      |# commit_source
+ 601 | 0 |      |
+ 602 | 0 |      |# Read script and extract help from comments starting with #::
+ 603 | 0 |      |#
+ 605 | 0 |      |def helpme(perl_arg_array):                                                      #PL: {
+ 606 | 1 |      |   SYSHELP=open(f"{__file__}",'w')                                               #PL: open(SYSHELP,"&lt;$0");
+ 607 | 1 |      |   while line in SYSHELP.readline():                                             #PL: while($line=&lt;SYSHELP> ){
+ 608 | 2 |      |      if line[0:3]=='#::':                                                       #PL: if(  substr($line,0,3) eq "#::" ){
+ 609 | 3 |      |         print(line[3:],file=sys.stderr,end="")                                  #PL: print STDERR substr($line,3);
+ 611 | 1 |      |   # for
+ 612 | 1 |      |   SYSHELP.f.close;                                                              #PL: close SYSHELP;
+ 613 | 1 |      |   sys.exit()                                                                    #PL: exit;
+ 615 | 0 |      |
+ 616 | 0 |      |#
+ 617 | 0 |      |# Terminate program (variant without mailing)
+ 618 | 0 |      |#
+ 620 | 0 |      |def abend(perl_arg_array):                                                       #PL: {
+ 621 | 1 |      |   message=None                                                                  #PL: my $message;
+ 622 | 1 |      |   (package,filename,lineno)=unknown                                             #PL: my ($package, $filename, $lineno) = caller;
+ 623 | 1 |      |   if len(perl_arg_array)==0:                                                    #PL: if( scalar(@_)==0 ){
+ 624 | 2 |      |      message=MessagePrefix + lineno + f"T  ABEND at {lineno}. No message was provided. Exiting."
+                                                                                                  #PL: $message=$MessagePrefix.$lineno."T  ABEND at $lineno. No message was provided. E
+                                                                                                  Cont:  xiting.";
+ 625 | 1 |      |   else:                                                                         #PL: else{
+ 626 | 2 |      |      message=MessagePrefix + lineno + f"T {perl_arg_array[0]}. Exiting " #PL: $message=$MessagePrefix.$lineno."T $_[0]. Exiting ";
+ 628 | 1 |      |   #  Syslog might not be available
+ 629 | 1 |      |   out([message])                                                                #PL: out($message);
+ 630 | 1 |      |   #[EMAIL] banner('ABEND');
+ 631 | 1 |      |   raise('Internal error')                                                       #PL: die('Internal error');
+ 632 | 1 |      |
+ 633 | 0 |      |# abend
+ 634 | 0 |      |
+ 635 | 0 |      |#
+ 636 | 0 |      |# Open log and output the banner; if additional arguments given treat them as subtitles
+ 637 | 0 |      |#        depends of two variable from main namespace: VERSION and debug
+ 638 | 0 |      |def banner(perl_arg_array):                                                      #PL: sub banner {
+ 639 | 1 |      |   #
+ 640 | 1 |      |   # Sanity check
+ 641 | 1 |      |   #
+ 642 | 1 |      |   logfile=None                                                                  #PL: state $logfile;
+ 643 | 1 |      |   if len(perl_arg_array)&lt;4 and perl_arg_array[0]=='ABEND':                      #PL: if( scalar(@_)&lt;4 && $_[0] eq 'ABEND' ){
+ 644 | 2 |      |      SYSLOG.f.close;                                                            #PL: close SYSLOG;
+ 645 | 2 |      |      #`cat $logfile | mail -s "[ABEND for $HOSTNAME/$SCRIPT_NAME] $_[0] $PrimaryAdmin`;
+ 646 | 2 |      |      return()                                                                   #PL: return;
+ 648 | 1 |      |   #
+ 649 | 1 |      |   # Decode obligatory arguments
+ 650 | 1 |      |   #
+ 651 | 1 |      |   global my_log_dir=perl_arg_array[0]                                           #PL: state $my_log_dir=$_[0];
+ 652 | 1 |      |   script_name=perl_arg_array[1]                                                 #PL: my $script_name=$_[1];
+ 653 | 1 |      |   title=perl_arg_array[2]    # this is an optional argumnet which is print STDERRed as subtitle after the title.
+                                                                                                  #PL: my $title=$_[2];
+ 654 | 1 |      |   log_retention_period=perl_arg_array[3]                                        #PL: my $log_retention_period=$_[3];
+ 655 | 1 |      |
+ 656 | 1 |      |   timestamp=subprocess.check_output("date "+%y/%m/%d %H:%M"")                   #PL: my $timestamp=`date "+%y/%m/%d %H:%M"`; chomp $timestamp;
+ 656 | 1 |      |   timestamp=timestamp.rstrip("\n")                                              #PL: chomp $timestamp;
+ 657 | 1 |      |   day=subprocess.check_output("date '+%d'")                                     #PL: my $day=`date '+%d'`; chomp $day;
+ 657 | 1 |      |   day=day.rstrip("\n")                                                          #PL: chomp $day;
+ 658 | 1 |      |   logstamp=subprocess.check_output("date +"%y%m%d_%H%M"")                       #PL: my $logstamp=`date +"%y%m%d_%H%M"`; chomp $logstamp;
+ 658 | 1 |      |   logstamp=logstamp.rstrip("\n")                                                #PL: chomp $logstamp;
+ 659 | 1 |      |   script_mod_stamp=None                                                         #PL: my $script_mod_stamp;
+ 660 | 1 |      |   script_mod_stamp=script_mod_stamp.rstrip("\n")                                #PL: chomp($script_mod_stamp=`date -r $0 +"%y%m%d_%H%M"`);
+ 661 | 1 |      |   if os.path.isdir(my_log_dir):                                                 #PL: if( -d $my_log_dir ){
+ 662 | 2 |      |      if 1==day and log_retention_period>0:                                      #PL: if( 1 == $day && $log_retention_period>0 ){
+ 663 | 3 |      |         #Note: in debugging script home dir is your home dir and the last thing you want is to clean it ;-)
+ 664 | 3 |      |         subprocess_rc,default_var = subprocess.getstatusoutput("find $my_log_dir -name "*.log" -type f -mtime +$log_retention_period -delete")          # monthly cleanup
+                                                                                                  #PL:             `find $my_log_dir -name "*.log" -type f -mtime +$log_retention_perio
+                                                                                                  #Cont: d -delete`;
+ 666 | 1 |      |   else:                                                                         #PL: else{
+ 667 | 2 |      |      subprocess_rc,default_var = subprocess.getstatusoutput("mkdir -p $my_log_dir") #PL: `mkdir -p $my_log_dir`;
+ 669 | 1 |      |
+ 670 | 1 |      |   logfile=f"{my_log_dir}/{script_name}.{logstamp}.log"                          #PL: $logfile="$my_log_dir/$script_name.$logstamp.log";
+ 671 | 1 |      |   try:                                                                          #PL: open(SYSLOG, ">$logfile") || abend(__LINE__,"Fatal error: unable to open $logfile");
+ 671 | 2 |      |      if os.path.isfile(f"{logfile}"): SYSLOG=open(f"{logfile}",'r')
+                                                                                                  #PL: open(SYSLOG, ">$logfile") || abend(__LINE__,"Fatal error: unable to open $logfil
+                                                                                                  Cont:  e");
+ 671 | 2 |      |      else: os.exit()                                                            #PL: open(SYSLOG, ">$logfile") || abend(__LINE__,"Fatal error: unable to open $logfile");
+ 671 | 1 |      |   except OSError:                                                               #PL: open(SYSLOG, ">$logfile") || abend(__LINE__,"Fatal error: unable to open $logfile");
+ 671 | 1 |      |   abend(sys._getframe().f_lineno,f"Fatal error: unable to open {logfile}")
+                                                                                                  #PL: open(SYSLOG, ">$logfile") || abend(__LINE__,"Fatal error: unable to open $logfil
+                                                                                                  Cont:  e");
+ 672 | 1 |      |   title='\n\n' + script_name.upper() + f": {title} (last modified {script_mod_stamp}) Running at {timestamp}\nLogs are at {logfile}. Type -h for help.\n"
+                                                                                                  #PL: $title="\n\n".uc($script_name).": $title (last modified $script_mod_stamp) Runni
+                                                                                                  Cont:  ng at $timestamp\nLogs are at $logfile. Type -h for help.\n";
+ 673 | 1 |      |   out([title])    # output the banner
+                                                                                                  #PL:       out($title);
+ 674 | 1 |      |   for in range(4,len(perl_arg_array)):                                          #PL: for( my $i=4; $i&lt;@_; $i++) {
+ 675 | 2 |      |      out([default_var[i]])       # optional subtitles
+                                                                                                  #PL:          out($_[$i]);
+ 677 | 1 |      |   out(['================================================================================\n\n'])
+                                                                                                  #PL: out ("==========================================================================
+                                                                                                  Cont:  ======\n\n");
+ 678 | 0 |      |#banner
+ 679 | 0 |      |
+ 680 | 0 |      |#
+ 681 | 0 |      |# Message generator: Record message in log and STDIN
+ 682 | 0 |      |# PARAMETERS:
+ 683 | 0 |      |#            lineno, severity, message
+ 684 | 0 |      |# ARG1 lineno, If it is negative skip this number of lines
+ 685 | 0 |      |# Arg2 Error code (the first letter is severity, the second letter can be used -- T is timestamp -- put timestamp inthe message)
+ 686 | 0 |      |# Arg3 Text of the message
+ 687 | 0 |      |# NOTE: $top_severity, $verbosity1, $verbosity1 are state variables that are initialized via special call to sp:: sp::logmes
+ 688 | 0 |      |
+ 690 | 0 |      |def logme(perl_arg_array):                                                       #PL: {
+ 691 | 1 |      |   #our $top_severity; -- should be defined globally
+ 692 | 1 |      |   error_code=perl_arg_array[0][0:1]                                             #PL: my $error_code=substr($_[0],0,1);
+ 693 | 1 |      |   error_suffix=perl_arg_array[0][1:1 + 1] if len(perl_arg_array[0])>1 else ''    # suffix T means add timestamp
+                                                                                                  #PL: my $error_suffix=(length($_[0])>1) ? substr($_[0],1,1):'';
+ 694 | 1 |      |   message=perl_arg_array[1]                                                     #PL: my $message=$_[1];
+ 695 | 1 |      |   message=message.rstrip("\n")    # we will add \n ourselves
+                                                                                                  #PL:       chomp($message);
+ 696 | 1 |      |
+ 697 | 1 |      |   verbosity1=None                                                               #PL: state $verbosity1; # $verbosity console
+ 698 | 1 |      |   verbosity2=None                                                               #PL: state $verbosity2; # $verbosity for log
+ 699 | 1 |      |   msg_cutlevel1=None                                                            #PL: state $msg_cutlevel1; # variable 6-$verbosity1
+ 700 | 1 |      |   msg_cutlevel2=None                                                            #PL: state $msg_cutlevel2; # variable 5-$verbosity2
+ 701 | 1 |      |   ermessage_db=None                                                             #PL: state @ermessage_db; # accumulates messages for each caterory (warning, errors and severe errors)
+ 702 | 1 |      |   ercounter=None                                                                #PL: state @ercounter;
+ 703 | 1 |      |   global delim='=' * 80                                                         #PL: state $delim='=' x 80;
+ 704 | 1 |      |   global MessagePrefix=''                                                       #PL: state $MessagePrefix='';
+ 705 | 1 |      |
+ 706 | 1 |      |   #
+ 707 | 1 |      |   # special cases -- ercode "D" means set msglevel1 and msglevel2, ' ' means print STDERR in log and console -- essentially out with messsage header
+ 708 | 1 |      |   #
+ 709 | 1 |      |
+ 710 | 1 |      |   if error_code=='D':                                                           #PL: if( $error_code eq 'D' ){
+ 711 | 2 |      |      # NOTE You can dynamically change verbosity within the script by issue D message.
+ 712 | 2 |      |      # Set script name and message  prefix
+ 713 | 2 |      |      if MessagePrefix=='':                                                      #PL: if ( $MessagePrefix eq '') {
+ 714 | 3 |      |         MessagePrefix=__file__[__file__.rfind('/')+1:]                          #PL: $MessagePrefix=substr($0,rindex($0,'/')+1);
+ 715 | 3 |      |         MessagePrefix=MessagePrefix[0:4]                                        #PL: $MessagePrefix=substr( $MessagePrefix,0,4);
+ 717 | 2 |      |      verbosity1=perl_arg_array[1]                                               #PL: $verbosity1=$_[1];
+ 718 | 2 |      |      verbosity2=perl_arg_array[2]                                               #PL: $verbosity2=$_[2];
+ 719 | 2 |      |
+ 720 | 2 |      |      msg_cutlevel1=len('WEST')-verbosity1-1       # verbosity 3 is max and means 4-3-1 =0  -- the index corresponding to code 'W'
+                                                                                                  #PL:          $msg_cutlevel1=length("WEST")-$verbosity1-1;
+ 721 | 2 |      |      msg_cutlevel2=len('WEST')-verbosity2-1       # same for log only (like in MSGLEVEL mainframes ;-)
+                                                                                                  #PL:          $msg_cutlevel2=length("WEST")-$verbosity2-1;
+ 722 | 2 |      |
+ 723 | 2 |      |      return()                                                                   #PL: return;
+ 725 | 1 |      |   if not error_code:                                                            #PL: unless ( $error_code ){
+ 726 | 2 |      |      # Blank error code is old equivalent of out: put obligatory message on console and into log
+ 727 | 2 |      |      out([message])                                                             #PL: out($message);
+ 728 | 2 |      |      return()                                                                   #PL: return;
+ 730 | 1 |      |   #
+ 731 | 1 |      |   # detect caller lineno.
+ 732 | 1 |      |   #
+ 733 | 1 |      |   (package,filename,lineno)=unknown                                             #PL: my ($package, $filename, $lineno) = caller;
+ 734 | 1 |      |   #
+ 735 | 1 |      |   # Generate diagnostic message from error code, line number and message (optionally timestamp is suffix of error code is T)
+ 736 | 1 |      |   #
+ 737 | 1 |      |   message=f"{MessagePrefix}\-{lineno}{error_code}: {message}"                   #PL: $message="$MessagePrefix\-$lineno$error_code: $message";
+ 738 | 1 |      |   severity='west'.find(error_code.lower())                                      #PL: my $severity=index("west",lc($error_code));
+ 739 | 1 |      |   if severity==-1:                                                              #PL: if( $severity == -1 ){
+ 740 | 2 |      |      out([message])                                                             #PL: out($message);
+ 741 | 2 |      |      return()                                                                   #PL: return;
+ 743 | 1 |      |
+ 745 | 1 |      |   ermessage_db[severity]+=f"\n\n{message}"    #Error history for the ercodes E and S
+                                                                                                  #PL:       $ermessage_db[$severity] .= "\n\n$message";
+ 746 | 1 |      |   if severity&lt;msg_cutlevel1 and severity&lt;msg_cutlevel2:    # no need to process if this is lower then both msglevels
+                                                                                                  #PL:       return if(  $severity&lt;$msg_cutlevel1 && $severity&lt;$msg_cutlevel2 );
+ 746 | 2 |      |      return()                                                                   #PL: }
+ 747 | 1 |      |   #
+ 748 | 1 |      |   # Stop processing if severity is less then current msglevel1 and msglevel2
+ 749 | 1 |      |   #
+ 750 | 1 |      |   if severity&lt;3:                                                                #PL: if( $severity &lt; 3 ){
+ 751 | 2 |      |      if severity>=msg_cutlevel2:                                                #PL: if( $severity >= $msg_cutlevel2 ){
+ 752 | 3 |      |         # $msg_cutlevel2 defines writing to SYSLOG. 3 means Errors (Severe and terminal messages always whould be print STDERRed)
+ 753 | 3 |      |         if severity&lt;4:                                                          #PL: if( $severity&lt;4 ){
+ 754 | 4 |      |            print(f"{message}\n",file=SYSLOG,end="")                             #PL: print SYSLOG "$message\n";
+ 755 | 3 |      |         else:                                                                   #PL: else {
+ 756 | 4 |      |            # special treatment of serious messages
+ 757 | 4 |      |            print(f"{delim}\n{message}\n{delim}\n",file=SYSLOG,end="") #PL: print SYSLOG "$delim\n$message\n$delim\n";
+ 760 | 2 |      |      if severity>=msg_cutlevel1:                                                #PL: if( $severity >= $msg_cutlevel1 ){
+ 761 | 3 |      |         # $msg_cutlevel1 defines writing to STDIN. 3 means Errors (Severe and terminal messages always whould be print STDERRed)
+ 762 | 3 |      |         if severity&lt;2:                                                          #PL: if( $severity&lt;2 ){
+ 763 | 4 |      |            print(f"{message}\n",file=sys.stderr,end="")                         #PL: print STDERR "$message\n";
+ 764 | 3 |      |         else:                                                                   #PL: else {
+ 765 | 4 |      |            print(f"{delim}\n{message}\n{delim}\n",file=sys.stderr,end="") #PL: print STDERR "$delim\n$message\n$delim\n";
+ 768 | 2 |      |      if len(__main__.STOP_STRING)>0 and __main__.STOP_STRING.find(error_code)>-1: #PL: if (length($::STOP_STRING)>0 && index($::STOP_STRING,$error_code) >-1 ){
+ 769 | 3 |      |         pdb.set_trace()                                                         #PL: $DB::single = 1;
+ 771 | 2 |      |      return()                                                                   #PL: return;
+ 772 | 1 |      |   # $severity&lt;3
+ 773 | 1 |      |   # severity=3 -- error code T
+ 774 | 1 |      |   # Here we processing error code 'T' which means "Issue error summary and normally terminate"
+ 775 | 1 |      |   # termination will be using die if the message suffix is "A" -- Nov 12, 2015
+ 776 | 1 |      |   #
+ 777 | 1 |      |
+ 778 | 1 |      |   summary=''                                                                    #PL: my $summary='';
+ 779 | 1 |      |
+ 780 | 1 |      |   #
+ 781 | 1 |      |   # We will put the most severe errors at the end and make 15 sec pause before  read them
+ 782 | 1 |      |   #
+ 783 | 1 |      |   out([f"\n{message}"])                                                         #PL: out("\n$message");
+ 784 | 1 |      |   for in range(1,len('WES')):                                                   #PL: for( my $counter=1; $counter&lt;length('WES'); $counter++ ){
+ 785 | 2 |      |      if ercounter != none[counter]:                                             #PL: if( defined($ercounter[$counter]) ){
+ 786 | 3 |      |         summary+=' ' + 'WES'[counter:counter + 1] + ': ' + ercounter[counter] #PL: $summary.=" ".substr('WES',$counter,1).": ".$ercounter[$counter];
+ 787 | 2 |      |      else:                                                                      #PL: else{
+ 788 | 3 |      |         ercounter[counter]=0                                                    #PL: $ercounter[$counter]=0;
+ 790 | 1 |      |   # for
+ 791 | 1 |      |   if summary:                                                                   #PL: ($summary) && out("\n=== SUMMARY OF ERRORS: $summary\n");
+ 791 | 2 |      |      out(f"\n=== SUMMARY OF ERRORS: {summary}\n")                               #PL: ($summary) && out("\n=== SUMMARY OF ERRORS: $summary\n");
+ 792 | 1 |      |   if ercounter[1]+ercounter[2]:                                                 #PL: if( $ercounter[1] + $ercounter[2] ){
+ 793 | 2 |      |      # print STDERR errors & severe errors
+ 794 | 2 |      |      for severity in range(1,3):                                                #PL: for(  $severity=1;  $severity&lt;3; $severity++ ){
+ 795 | 3 |      |         # $ermessage_db[$severity]
+ 796 | 3 |      |         if ercounter[severity]>0:                                               #PL: if( $ercounter[$severity] > 0 ){
+ 797 | 4 |      |            out([f"{ermessage_db[severity]}\n\n"])                               #PL: out("$ermessage_db[$severity]\n\n");
+ 800 | 2 |      |      if ercounter[2]>0:                                                         #PL: ($ercounter[2]>0) && out("\n*** PLEASE CHECK $ercounter[2] SERIOUS MESSAGES ABOVE");
+ 800 | 3 |      |         out(f"\n*** PLEASE CHECK {ercounter[2]} SERIOUS MESSAGES ABOVE")
+                                                                                                  #PL: ($ercounter[2]>0) && out("\n*** PLEASE CHECK $ercounter[2] SERIOUS MESSAGES ABOV
+                                                                                                  Cont:  E");
+ 802 | 1 |      |
+ 803 | 1 |      |   #
+ 804 | 1 |      |   # Compute RC code: 10 or higher there are serious messages
+ 805 | 1 |      |   #
+ 806 | 1 |      |   rc=0                                                                          #PL: my $rc=0;
+ 807 | 1 |      |   if ercounter[2]>0:                                                            #PL: if( $ercounter[2]>0 ){
+ 808 | 2 |      |      rc=10*ercounter[2] if ercounter[2]&lt;9 else 90                               #PL: $rc=($ercounter[2]&lt;9) ? 10*$ercounter[2] : 90;
+ 810 | 1 |      |   if ercounter[1]>0:                                                            #PL: if( $ercounter[1]>0 ){
+ 811 | 2 |      |      rc=ercounter[2] if ercounter[1]&lt;9 else 9                                   #PL: $rc=($ercounter[1]&lt;9) ? $ercounter[2] : 9;
+ 813 | 1 |      |   sys.exit(rc)                                                                  #PL: exit $rc;
+ 814 | 0 |      |# logme
+ 815 | 0 |      |
+ 816 | 0 |      |#
+ 817 | 0 |      |# Output message to both log and STDERR
+ 818 | 0 |      |#
+ 820 | 0 |      |def out(perl_arg_array):                                                         #PL: {
+ 821 | 1 |      |   if len(perl_arg_array)==0:                                                    #PL: if( scalar(@_)==0 ){
+ 822 | 2 |      |      print(,file=sys.stderr)                                                    #PL: say STDERR;
+ 823 | 2 |      |      print(,file=SYSLOG)                                                        #PL: say SYSLOG;
+ 824 | 2 |      |      return()                                                                   #PL: return;
+ 826 | 1 |      |   print(perl_arg_array[0],file=sys.stderr)                                      #PL: say STDERR $_[0];
+ 827 | 1 |      |   print(perl_arg_array[0],file=SYSLOG)                                          #PL: say SYSLOG $_[0];
+ 829 | 0 |      |
+ 831 | 0 |      |def step(perl_arg_array):                                                        #PL: {
+ 832 | 1 |      |   pdb.set_trace()                                                               #PL: $DB::single = 1;
+The following lines were probably translated incorrectly:
+[136]: for( ; $lineno&lt;@SourceText; $lineno++  ){
+[216]: for (; $backno&lt;@FormattedMain; $backno++){
+
+
+</pre>
+<hr>
+<!--#include virtual="/linkfooter.htm" -->
+
+<p><i>Last modified: <!--webbot bot="Timestamp" s-type="EDITED" s-format="%B %d, %Y" startspan -->August 31, 2020<!--webbot bot="Timestamp" i-checksum="21880" endspan --></i> </p>
+
+</body>
+
+</html>
