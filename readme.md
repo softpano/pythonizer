@@ -1,4 +1,4 @@
-##T Translator from Perl to Python 
+## Translator from Perl to Python 
 ### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.5 of "FUZZY"  TRANLATOR/TRANSLIBER FROM PERL TO PYTHON 
 
 Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was improved. Substr function translation improved. Many other changes and  error corrections. Option -r (refactor) implemented to allow refactoring. By default loads and run pre-pythonlizer.pl. As it changes the source, creating a backup,  you need to run it only once.  
