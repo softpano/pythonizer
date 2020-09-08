@@ -1,11 +1,6 @@
 ## Translator from Perl to Python 
-### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.5 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
+### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.6 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
 
-Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was improved. Substr function translation improved. Many other changes and  error corrections. Option -r (refactor) implemented to allow refactoring. By default loads and run pre-pythonlizer.pl. As it changes the source, creating a backup,  you need to run it only once.  
-
-Aug 22, 2020: Version 0.4 was uploaded. The walrus operator and the f-strings now are used to translate Perl double quoted literals if option -p is set to 3 (default). In this version Python 3.8 is used as the target language. 
-
-Aug 17, 2020: Version 0.3 was uploaded. Changes since version 0.2: default version of Python used is now version 3.8; option -p allows to set version 2 if you still need generation for Python 2.7 (more constructs will be untranslatable).  See user guide for details. 
 
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
@@ -13,18 +8,19 @@ http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Py
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml
 
-
 Please note that this is an alpha version, not beta (traditionally beta are versions are 0.9 - 0.999). So major changes and enhancements are possible. At the present state phase, it still does not even attampt to tranlate construct outside subset typycally used in sysadmin scripts. There is also pre-pythonizer -- the first phaze of translation which currentlyis optionsl, although running Perl script via it increases chances that the script will be transliterated with fewer errors. 
 
-HISTORY: 
+### HISTORY 
 
-Aug 31, 2020: Version 0.5 was uploaded
+Sep 08,2020 Version 0.6 was uploaded. Generated source does not contain syntax errors and starts executing in Python interpreter till the first error. List on internal functions created. Translation of backquotes and open improved. 
 
-Aug 22, 2020: Version 0.4 was uploaded
+Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was improved. Substr function translation improved. Many other changes and  error corrections. Option -r (refactor) implemented to allow refactoring. By default loads and run pre-pythonlizer.pl. As it changes the source, creating a backup,  you need to run it only once.  
 
-Aug 17, 2020: Version 0.3 was uploaded 
+Aug 22, 2020: Version 0.4 was uploaded. The walrus operator and the f-strings now are used to translate Perl double quoted literals if option -p is set to 3 (default). In this version Python 3.8 is used as the target language. 
 
-Aug 05, 2020: Version 0.2 was uploaded. 
+Aug 17, 2020: Version 0.3 was uploaded. Changes since version 0.2: default version of Python used is now version 3.8; option -p allows to set version 2 if you still need generation for Python 2.7 (more constructs will be untranslatable).  See user guide for details. 
+
+Aug 05, 2020: Version 0.2 was uploaded. Initial version. 
 
 Here is an fragment of translation of pre-pythonizer.pl which exists in this repositorory. It demostrates how thecurrent version if pythonizer performs:  
     
@@ -32,99 +28,182 @@ Here is an fragment of translation of pre-pythonizer.pl which exists in this rep
 #### Example of translation 
 
 ```Perl
-   PYTHONIZER: Fuzzy translator of Python to Perl. Version 0.50 (last modified 200831_0011) Running at 20/08/31 09:11
-Logs are at /tmp/Pythonizer/pythonizer.200831_0911.log. Type -h for help.
-=====================================================================================================================
-Results of transcription are written to the file  pre_pythonizer.py
-=====================================================================================================================
-... ... ...
-  54 | 0 |      |#$debug=3; # starting from Debug=3 only the first chunk processed
-  55 | 0 |      |STOP_STRING='' # In debug mode gives you an ability to switch trace on any type of error message for example S (via hook in logme).
-                                                                                                  #PL:    $STOP_STRING='';
-  56 | 0 |      |use_git_repo=''                                                                  #PL: $use_git_repo='';
-  57 | 0 |      |
-  58 | 0 |      |# You can switch on tracing from particular line of source ( -1 to disable)
-  59 | 0 |      |breakpoint=-1                                                                    #PL: $breakpoint=-1;
-  60 | 0 |      |SCRIPT_NAME=__file__[__file__.rfind('/')+1:]                                     #PL: $SCRIPT_NAME=substr($0,rindex($0,'/')+1);
-  61 | 0 |      |if (dotpos:=SCRIPT_NAME.find('.'))>-1:                                           #PL: if( ($dotpos=index($SCRIPT_NAME,'.'))>-1 ) {
-  62 | 1 |      |   SCRIPT_NAME=SCRIPT_NAME[0:dotpos]                                             #PL: $SCRIPT_NAME=substr($SCRIPT_NAME,0,$dotpos);
-  64 | 0 |      |
-  65 | 0 |      |OS=os.name # $^O is built-in Perl variable that contains OS name
-                                                                                                  #PL:    $OS=$^O;
-  66 | 0 |      |if OS=='cygwin':                                                                 #PL: if($OS eq 'cygwin' ){
-  67 | 1 |      |   HOME='/cygdrive/f/_Scripts'    # $HOME/Archive is used for backups
-                                                                                                  #PL:       $HOME="/cygdrive/f/_Scripts";
-  68 | 0 |      |elif OS=='linux':                                                                #PL: elsif($OS eq 'linux' ){
-  69 | 1 |      |   HOME=os.environ['HOME']    # $HOME/Archive is used for backups
-                                                                                                  #PL:       $HOME=$ENV{'HOME'};
-  71 | 0 |      |LOG_DIR=f"/tmp/{SCRIPT_NAME}"                                                    #PL: $LOG_DIR="/tmp/$SCRIPT_NAME";
-  72 | 0 |      |FormattedMain=('sub main\n','{\n')                                               #PL: @FormattedMain=("sub main\n","{\n");
-  73 | 0 |      |FormattedSource=FormattedSub.copy                                                #PL: @FormattedSource=@FormattedSub=@FormattedData=();
-  74 | 0 |      |mainlineno=len(FormattedMain) # we need to reserve one line for sub main
-                                                                                                  #PL:    $mainlineno=scalar( @FormattedMain);
-  75 | 0 |      |sourcelineno=sublineno=datalineno=0                                              #PL: $sourcelineno=$sublineno=$datalineno=0;
-  76 | 0 |      |
-  77 | 0 |      |tab=4                                                                            #PL: $tab=4;
-  78 | 0 |      |nest_corrections=0                                                               #PL: $nest_corrections=0;
-  79 | 0 |      |keyword={'if': 1,'while': 1,'unless': 1,'until': 1,'for': 1,'foreach': 1,'given': 1,'when': 1,'default': 1}
-                                                                                                  #PL: %keyword=('if'=>1,'while'=>1,'unless'=>1, 'until'=>1,'for'=>1,'foreach'=>1,'give
-                                                                                                  Cont:  n'=>1,'when'=>1,'default'=>1);
-  80 | 0 |      |
-  81 | 0 |      |logme(['D',1,2]) # E and S to console, everything to the log.
-                                                                                                  #PL:    logme('D',1,2);
-  82 | 0 |      |banner([LOG_DIR,SCRIPT_NAME,'PREPYTHONIZER: Phase 1 of pythonizer',30]) # Opens SYSLOG and print STDERRs banner; parameter 4 is log retention period
-                                                                                                  #PL:    banner($LOG_DIR,$SCRIPT_NAME,'PREPYTHONIZER: Phase 1 of pythonizer',30);
-  83 | 0 |      |get_params() # At this point debug  flag can be reset
-                                                                                                  #PL:    get_params();
-  84 | 0 |      |if debug>0:                                                                      #PL: if( $debug>0 ){
-  85 | 1 |      |   logme(['D',2,2])    # Max verbosity
-                                                                                                  #PL:       logme('D',2,2);
-  86 | 1 |      |   print(f"ATTENTION!!! {SCRIPT_NAME} is working in debugging mode {debug} with autocommit of source to {HOME}/Archive\n",file=sys.stderr,end="")
-                                                                                                  #PL: print STDERR "ATTENTION!!! $SCRIPT_NAME is working in debugging mode $debug with
-                                                                                                  Cont:   autocommit of source to $HOME/Archive\n";
-  87 | 1 |      |   autocommit([f"{HOME}/Archive",use_git_repo])    # commit source archive directory (which can be controlled by GIT)
-                                                                                                  #PL:       autocommit("$HOME/Archive",$use_git_repo);
-  89 | 0 |      |print(f"Log is written to {LOG_DIR}, The original file will be saved as {fname}.original unless this file already exists ")
-                                                                                                  #PL: say "Log is written to $LOG_DIR, The original file will be saved as $fname.origi
-                                                                                                  Cont:  nal unless this file already exists ";
-  90 | 0 |      |print('=' * 80,'\n',file=sys.stderr)                                             #PL: say STDERR  "=" x 80,"\n";
-  91 | 0 |      |
-  92 | 0 |      |#
-  93 | 0 |      |# Main loop initialization variables
-  94 | 0 |      |#
-  95 | 0 |      |new_nest=cur_nest=0                                                              #PL: $new_nest=$cur_nest=0;
-  96 | 0 |      |#$top=0; $stack[$top]='';
-  97 | 0 |      |lineno=noformat=SubsNo=0                                                         #PL: $lineno=$noformat=$SubsNo=0;
-  98 | 0 |      |here_delim='\n' # impossible combination
-                                                                                                  #PL:    $here_delim="\n";
-  99 | 0 |      |InfoTags=''                                                                      #PL: $InfoTags='';
- 100 | 0 |      |SourceText=sys.stdin.readlines().copy                                            #PL: @SourceText=;
- 101 | 0 |      |
- 102 | 0 |      |#
- 103 | 0 |      |# Slurp the initial comment block and use statements
- 104 | 0 |      |#
- 105 | 0 |      |ChannelNo=lineno=0                                                               #PL: $ChannelNo=$lineno=0;
- 106 | 0 |      |while 1:                                                                         #PL: while(1){
- 107 | 1 |      |   if lineno==breakpoint:                                                        #PL: if( $lineno == $breakpoint ){
- 109 | 2 |      |      pdb.set_trace()                                                            #PL: }
- 110 | 1 |      |   line=line.rstrip("\n")                                                        #PL: chomp($line=$SourceText[$lineno]);
- 111 | 1 |      |   if re.match(r'^\s*$',line):                                                   #PL: if( $line=~/^\s*$/ ){
- 112 | 2 |      |      process_line(['\n',-1000])                                                 #PL: process_line("\n",-1000);
- 113 | 2 |      |      lineno+=1                                                                  #PL: $lineno++;
- 114 | 2 |      |      continue                                                                   #PL: next;
- 116 | 1 |      |   intact_line=line                                                              #PL: $intact_line=$line;
- 117 | 1 |      |   if intact_line[0:1]=='#':                                                     #PL: if( substr($intact_line,0,1) eq '#' ){
- 118 | 2 |      |      process_line([line,-1000])                                                 #PL: process_line($line,-1000);
- 119 | 2 |      |      lineno+=1                                                                  #PL: $lineno++;
- 120 | 2 |      |      continue                                                                   #PL: next;
- 122 | 1 |      |   line=normalize_line(line)                                                     #PL: $line=normalize_line($line);
- 123 | 1 |      |   line=line.rstrip("\n")                                                        #PL: chomp($line);
- 124 | 1 |      |   (line)=line.split(' '),1                                                      #PL: ($line)=split(' ',$line,1);
- 125 | 1 |      |   if re.match(r'^use\s+',line):                                                 #PL: if($line=~/^use\s+/){
- 126 | 2 |      |      process_line([line,-1000])                                                 #PL: process_line($line,-1000);
- 127 | 1 |      |   else:                                                                         #PL: else{
- 128 | 2 |      |      break                                                                      #PL: last;
- 130 | 1 |      |   lineno+=1                                                                     #PL: $lineno++;
- 131 | 0 |      |#while
-  ... ... ...
+   ... ... ...
+ 870 | 1 |      |   for lineno in range(lineno,len(SourceText)):                                  #PL: {
+ 871 | 2 |      |      line=SourceText[lineno]                                                    #PL: $line=$SourceText[$lineno];
+ 872 | 2 |      |      offset=0                                                                   #PL: $offset=0;
+ 873 | 2 |      |      line=line.rstrip("\n")                                                     #PL: chomp($line);
+ 874 | 2 |      |      intact_line=line                                                           #PL: $intact_line=$line;
+ 876 | 2 |      |      if lineno==breakpoint:                                                     #PL: {
+ 878 | 3 |      |         pdb.set_trace()                                                         #PL: }
+ 879 | 2 |      |
+ 880 | 2 |      |      line=([line])                                                              #PL: $line=normalize_line($line);
+ 881 | 2 |      |
+ 882 | 2 |      |      #
+ 883 | 2 |      |      # Check for HERE line
+ 884 | 2 |      |      #
+ 885 | 2 |      |
+ 887 | 2 |      |      if noformat:                                                               #PL: {
+ 889 | 3 |      |         if line==here_delim:                                                    #PL: {
+ 890 | 4 |      |            noformat=0                                                           #PL: $noformat=0;
+ 891 | 4 |      |            InfoTags=''                                                          #PL: $InfoTags='';
+ 893 | 3 |      |
+ 894 | 3 |      |         process_line([line,-1000])                                              #PL: process_line($line,-1000);
+ 895 | 3 |      |         continue                                                                #PL: next;
+ 897 | 2 |      |
+ 898 | 2 |      |
+ 900 | 2 |      |      if (default_match:=re.match("""<<['"](\w+)['"]$""",line)): #PL: {
+ 901 | 3 |      |         here_delim=default_match.group(1)                                       #PL: $here_delim=$1;
+ 902 | 3 |      |         noformat=1                                                              #PL: $noformat=1;
+ 903 | 3 |      |         InfoTags='HERE'                                                         #PL: $InfoTags='HERE';
+ 905 | 2 |      |
+ 906 | 2 |      |      #
+ 907 | 2 |      |      # check for comment lines
+ 908 | 2 |      |      #
+ 910 | 2 |      |      if line[0]=='#':                                                           #PL: {
+ 912 | 3 |      |         if line=='#%OFF':                                                       #PL: {
+ 913 | 4 |      |            noformat=1                                                           #PL: $noformat=1;
+ 914 | 4 |      |            here_delim='#%ON'                                                    #PL: $here_delim='#%ON';
+ 915 | 4 |      |            InfoTags='OFF'                                                       #PL: $InfoTags='OFF';
+ 918 | 3 |      |         elif re.match(r'^#%ON',line):                                           #PL: {
+ 919 | 4 |      |            noformat=0                                                           #PL: $noformat=0;
+ 922 | 3 |      |         elif line[0:6]=='#%NEST':                                               #PL: {
+ 924 | 4 |      |            if (default_match:=re.match(r'^#%NEST=(\d+)',line)): #PL: {
+ 926 | 5 |      |               if cur_nest!=default_match.group(1):                              #PL: {
+ 927 | 6 |      |                  cur_nest=new_nest=default_match.group(1)                   # correct current nesting level
+                                                                                                  #PL:                         $cur_nest=$new_nest=$1;
+ 928 | 6 |      |                  InfoTags=f"={cur_nest}"                                        #PL: $InfoTags="=$cur_nest";
+ 931 | 5 |      |               else:                                                             #PL: {
+ 932 | 6 |      |                  InfoTags=f"OK {cur_nest}"                                      #PL: $InfoTags="OK $cur_nest";
+ 934 | 5 |      |
+ 937 | 4 |      |            elif re.match(r'^#%NEST++',line):                                    #PL: {
+ 938 | 5 |      |               cur_nest=new_nest=default_match.group(1)+1                # correct current nesting level
+                                                                                                  #PL:                     $cur_nest=$new_nest=$1+1;
+ 939 | 5 |      |               InfoTags='+1'                                                     #PL: $InfoTags='+1';
+ 942 | 4 |      |            elif re.match(r'^#%NEST--',line):                                    #PL: {
+ 943 | 5 |      |               cur_nest=new_nest=default_match.group(1)+1                # correct current nesting level
+                                                                                                  #PL:                     $cur_nest=$new_nest=$1+1;
+ 944 | 5 |      |               InfoTags='-1'                                                     #PL: $InfoTags='-1';
+ 947 | 4 |      |            elif re.match(r'^#%ZERO\?',line):                                    #PL: {
+ 949 | 5 |      |               if cur_nest==0:                                                   #PL: {
+ 950 | 6 |      |                  InfoTags=f"OK {cur_nest}"                                      #PL: $InfoTags="OK $cur_nest";
+ 953 | 5 |      |               else:                                                             #PL: {
+ 954 | 6 |      |                  InfoTags='??'                                                  #PL: $InfoTags="??";
+ 955 | 6 |      |                  logme(['E',f"Nest is {cur_nest} instead of zero. Reset to zero"]) #PL: logme('E',"Nest is $cur_nest instead of zero. Reset to zero");
+ 956 | 6 |      |                  cur_nest=new_nest=0                                            #PL: $cur_nest=$new_nest=0;
+ 957 | 6 |      |                  nest_corrections+=1                                            #PL: $nest_corrections++;
+ 959 | 5 |      |
+ 961 | 4 |      |
+ 963 | 3 |      |
+ 964 | 3 |      |         process_line([line,-1000])                                              #PL: process_line($line,-1000);
+ 965 | 3 |      |         continue                                                                #PL: next;
+ 967 | 2 |      |
+ 969 | 2 |      |      if (default_match:=re.match(r'^sub\s+(\w+)',line)):                        #PL: {
+ 970 | 3 |      |         SubList[default_match.group(1)]=lineno                                  #PL: $SubList{$1}=$lineno;
+ 971 | 3 |      |         SubsNo+=1                                                               #PL: $SubsNo++;
+ 972 | 3 |      |         ChannelNo=2                                                             #PL: $ChannelNo=2;
+ 973 | 3 |      |         CommentBlock=0                                                          #PL: $CommentBlock=0;
+ 975 | 3 |      |         for backno in range(len(FormattedMain)-1,0,-1):                         #PL: {
+ 976 | 4 |      |            comment=FormattedMain[backno]                                        #PL: $comment=$FormattedMain[$backno];
+ 978 | 4 |      |            if re.match(r'^\s*#',comment) or re.match(r'^\s*$',comment): #PL: {
+ 979 | 5 |      |               CommentBlock+=1                                                   #PL: $CommentBlock++;
+ 982 | 4 |      |            else:                                                                #PL: {
+ 983 | 5 |      |               break                                                             #PL: last;
+ 985 | 4 |      |
+ 987 | 3 |      |
+ 988 | 3 |      |         backno+=1                                                               #PL: $backno++;
+ 990 | 3 |      |         for backno in range(backno,len(FormattedMain)):                         #PL: {
+ 991 | 4 |      |            comment=FormattedMain[backno]                                        #PL: $comment=$FormattedMain[$backno];
+ 992 | 4 |      |            process_line([comment,-1000])             #copy comment block from @FormattedMain were it got by mistake
+                                                                                                  #PL:                 process_line($comment,-1000);
+ 994 | 3 |      |
+ 996 | 3 |      |         for backno in range(0,CommentBlock):                                    #PL: {
+ 997 | 4 |      |            FormattedMain.pop()             # then got to it by mistake
+                                                                                                  #PL:                 pop(@FormattedMain);
+ 999 | 3 |      |
+1001 | 3 |      |         if cur_nest!=0:                                                         #PL: {
+1002 | 4 |      |            logme(['E',f"Non zero nesting encounted for subroutine definition {default_match.group(1)}"]) #PL: logme('E',"Non zero nesting encounted for subroutine definition $1");
+1004 | 4 |      |            if cur_nest>0:                                                       #PL: {
+1005 | 5 |      |               InfoTags='} ?'                                                    #PL: $InfoTags='} ?';
+1008 | 4 |      |            else:                                                                #PL: {
+1009 | 5 |      |               InfoTags='{ ?'                                                    #PL: $InfoTags='{ ?';
+1011 | 4 |      |
+1012 | 4 |      |            nest_corrections+=1                                                  #PL: $nest_corrections++;
+1014 | 3 |      |
+1015 | 3 |      |         cur_nest=new_nest=0                                                     #PL: $cur_nest=$new_nest=0;
+1018 | 2 |      |      elif line=='__END__' or line=='__DATA__':                                  #PL: {
+1019 | 3 |      |         ChannelNo=3                                                             #PL: $ChannelNo=3;
+1020 | 3 |      |         logme(['E',f"Non zero nesting encounted for {line}"])                   #PL: logme('E',"Non zero nesting encounted for $line");
+1022 | 3 |      |         if cur_nest>0:                                                          #PL: {
+1023 | 4 |      |            InfoTags='} ?'                                                       #PL: $InfoTags='} ?';
+1026 | 3 |      |         else:                                                                   #PL: {
+1027 | 4 |      |            InfoTags='{ ?'                                                       #PL: $InfoTags='{ ?';
+1029 | 3 |      |
+1030 | 3 |      |         noformat=1                                                              #PL: $noformat=1;
+1031 | 3 |      |         here_delim='"'          # No valid here delimiter in this case !
+                                                                                                  #PL:             $here_delim='"';
+1032 | 3 |      |         InfoTags='DATA'                                                         #PL: $InfoTags='DATA';
+1034 | 2 |      |
+1036 | 2 |      |      if line[0]=='=' and line!='=cut':                                          #PL: {
+1037 | 3 |      |         noformat=1                                                              #PL: $noformat=1;
+1038 | 3 |      |         InfoTags='POD'                                                          #PL: $InfoTags='POD';
+1040 | 3 |      |         here_delim='=cut'                                                       #PL: }
+1041 | 2 |      |
+1042 | 2 |      |
+1043 | 2 |      |      # blank lines should not be processed
+1045 | 2 |      |      if re.match(r'^\s*$',line):                                                #PL: {
+1046 | 3 |      |         process_line(['',-1000])                                                #PL: process_line('',-1000);
+1047 | 3 |      |         continue                                                                #PL: next;
+1049 | 2 |      |
+1050 | 2 |      |      # trim leading blanks
+1052 | 2 |      |      if (default_match:=re.match(r'^\s*(\S.*$)',line)):                         #PL: {
+1053 | 3 |      |         line=default_match.group(1)                                             #PL: $line=$1;
+1055 | 2 |      |
+1056 | 2 |      |      # comments on the level of nesting 0 should be shifted according to nesting
+1058 | 2 |      |      if line[0]=='#':                                                           #PL: {
+1059 | 3 |      |         process_line([line,0])                                                  #PL: process_line($line,0);
+1060 | 3 |      |         continue                                                                #PL: next;
+1062 | 2 |      |
+1063 | 2 |      |
+1064 | 2 |      |      # comments on the level of nesting 0 should start with the first position
+1065 | 2 |      |      first_sym=line[0]                                                          #PL: $first_sym=substr($line,0,1);
+1066 | 2 |      |      last_sym=line[-1]                                                          #PL: $last_sym=substr($line,-1,1);
+1068 | 2 |      |      if first_sym=='{' and len(line)==1:                                        #PL: {
+1069 | 3 |      |         process_line(['{',0])                                                   #PL: process_line('{',0);
+1070 | 3 |      |         cur_nest=new_nest=new_nest+1                                            #PL: $cur_nest=$new_nest+=1;
+1071 | 3 |      |         continue                                                                #PL: next;
+1074 | 2 |      |      elif first_sym=='}':                                                       #PL: {
+1075 | 3 |      |         cur_nest=new_nest=new_nest-1                                            #PL: $cur_nest=$new_nest-=1;
+1076 | 3 |      |         process_line(['}',0])          # shift "{" left, aligning with the keyword
+                                                                                                  #PL:             process_line('}',0);
+1078 | 3 |      |         if line[0]=='}':                                                        #PL: {
+1079 | 4 |      |            line=line[1:]                                                        #PL: $line=substr($line,1);
+1081 | 3 |      |
+1083 | 3 |      |         while line[0]==' ':                                                     #PL: {
+1084 | 4 |      |            line=line[1:]                                                        #PL: $line=substr($line,1);
+1086 | 3 |      |
+1087 | 3 |      |         # Case of }else{
+1089 | 3 |      |         if not last_sym=='{':                                                   #PL: {
+1090 | 4 |      |            process_line([line,0])                                               #PL: process_line($line,0);
+1091 | 4 |      |            continue                                                             #PL: next;
+1093 | 3 |      |
+1095 | 3 |      |         if cur_nest==0:                                                         #PL: {
+1096 | 4 |      |            ChannelNo=1             # write to main
+                                                                                                  #PL:                 $ChannelNo=1;
+1098 | 3 |      |
+1100 | 2 |      |
+1101 | 2 |      |      # Step 2: check the last symbol for "{" Note: comments are prohibited on such lines
+1103 | 2 |      |      if last_sym=='{' and len(line)>1:                                          #PL: {
+1104 | 3 |      |         process_line([line[0:-1],0])                                            #PL: process_line(substr($line,0,-1),0);
+1105 | 3 |      |         process_line(['{',0])                                                   #PL: process_line('{',0);
+1106 | 3 |      |         cur_nest=new_nest=new_nest+1                                            #PL: $cur_nest=$new_nest+=1;
+1107 | 3 |      |         continue                                                                #PL: next;
+1109 | 2 |      |      # if
+1110 | 2 |      |      #elsif( $last_sym eq '}' && length($line)==1  ){
+1111 | 2 |      |      # NOTE: only standalone } on the line affects effective nesting; line that has other symbols is assumed to be like if (...) { )
+1112 | 2 |      |      # $new_nest-- is not nessary as as it is also the first symbol and nesting was already corrected
+1113 | 2 |      |      #}
+1114 | 2 |      |      process_line([line,offset])                                                #PL: process_line($line,$offset);
+1116 | 1 |      |   # while
+
 ```
