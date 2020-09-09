@@ -63,7 +63,7 @@ If  __DATA__ or __END__ are used a separate file with  the extension  .data  (
 
 ### HISTORY 
 
-Sep 08,2020 Version 0.6 was uploaded. Generated source does not contain syntax errors and starts executing in Python interpreter till the first error. List on internal functions created. Translation of backquotes and open improved. 
+Sep 08, 2020: Version 0.6 was uploaded. Generated source does not contain syntax errors and starts executing in Python interpreter till the first error. List on internal functions created. Translation of backquotes and open statement improved. 
 
 Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was improved. Substr function translation improved. Many other changes and  error corrections. Option -r (refactor) implemented to allow refactoring. By default loads and run pre-pythonlizer.pl. As it changes the source, creating a backup,  you need to run it only once.  
 
@@ -71,12 +71,11 @@ Aug 22, 2020: Version 0.4 was uploaded. The walrus operator and the f-strings no
 
 Aug 17, 2020: Version 0.3 was uploaded. Changes since version 0.2: default version of Python used is now version 3.8; option -p allows to set version 2 if you still need generation for Python 2.7 (more constructs will be untranslatable).  See user guide for details. 
 
-Aug 05, 2020: Version 0.2 was uploaded. Initial version. 
-
-Here is an fragment of translation of pre-pythonizer.pl which exists in this repositorory. It demostrates how thecurrent version if pythonizer performs:  
-    
+Aug 05, 2020: Version 0.2 was uploaded. The initial version. 
 
 #### Example of translation 
+
+Here is an fragment of translation of pre-pythonizer.pl which exists in this repositorory. It demostrates how the current version performs on "sysadmin"/"text processing" subset of Perl:  
 
 ```Perl
    ... ... ...
