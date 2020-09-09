@@ -1,14 +1,65 @@
 ## Translator from Perl to Python 
 ### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.6 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
 
-
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/index.shtml
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml
 
-Please note that this is an alpha version, not beta (traditionally beta are versions are 0.9 - 0.999). So major changes and enhancements are possible. At the present state phase, it still does not even attampt to tranlate construct outside subset typycally used in sysadmin scripts. There is also pre-pythonizer -- the first phaze of translation which currentlyis optionsl, although running Perl script via it increases chances that the script will be transliterated with fewer errors. 
+Please note that this is an alpha version, not beta (traditionally beta are versions are 0.9 - 0.999). So major changes and enhancements are possible.  
+
+### Possible use cases
+
+Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task known only Python. 
+
+University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance.   In this case, a program that "explains" Perl constructs in Python term would be extremely useful and, sometimes, a lifesaver. Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), and in most cases, old scripts will stay too.
+
+The other role is to give a quick start for system administrators who want to learn Python (for example, need to support researchers who work with Python), but who currently knows only Perl -- many older school sysadmins dislike Python and for a reason ;-) 
+
+
+### Pre-pythonizer implements the first phaze of translation
+
+The first pass is currently fully optional and need transformations of Perl code can be performed by other utilities. It just slightly increase probability of more correct translation of the code. It reformat the code so that curvy brackets were mostly on separate lines (this was useful for pythonizer up to version 0.2; later versions  do not depend on this transformation.) 
+
+It can be used as a separate program, which transforms initial Perl script creating a backup with the extension .original. The main useful function in the current version is refactoring of the Perl program by pushing subroutines up as in Python subroutines needs to be declared before use. 
+
+It needs to run only once for each Perl script you want to translate to Python. subsequence modification can be performed on this text instead of the original script. 
+
+See the User Guide for detail. 
+
+### Pythonizer implements actual transformation of Perl into Python
+
+Currently only few user options are supported (pythonizer -h provides a  list of options):  
+
+-p -- The version of Python used for generation. Default is 3.8 (can be set explicitly by specifying -p 3) You can set 2.7 by using  -p 2
+
+-v -- verbosity -v 0 -minimal verbosity -v 3 -- max verbosity; can also be expresses as -v -vv and -vvv -- forms to which Unix user got used in other utilities
+
+-t  -- tab size for generated code; the default -t 4 
+
+-r -- refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the pre_pythonizer preliminary pass on the source code. Of course this can be  done manually with  more control but this provides an integrated way to refactor the program. 
+
+You need to download files or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example,  /opt/Pythonizer 
+
+The directory into which the main program and modules are downloaded  needs to be made current before the run. 
+
+Currently main program and all modules should reside in a single directory from which you will run the program.  
+
+ATTENTION: During invocation of pythonizer  this directory should be current. 
+
+You can run Pythonizer both in Cygwin and Linux. 
+
+To "pythonize" the Perl script /path/to/your/program.pl  you need to use the following invocation (the directory in which pythonizer resides should be current otherwise modules will not be loaded) 
+
+cd /path/to/pythonizer && pythonizer /path/to/your/program.pl
+
+If the program runs to the end you will get "pythonized" text in /path/to/your/program.py
+
+It also produces protocol of translation in /tmp/Pythonizer  with size by side Perl and Python code, which allows you to analyses the protocol detect places that need to be commented out translated manually. 
+
+If  __DATA__ or __END__ are used a separate file with  the extension  .data  (/path/to/your/program.data for the example above) will be created with  the content on this section of Perl script.
+
 
 ### HISTORY 
 
