@@ -76,6 +76,7 @@
 # 0.570  2020/09/03  BEZROUN   Translation of ++ and --  implemented
 # 0.580  2020/09/03  BEZROUN   Translation of function sprintf implemented
 # 0.600  2020/09/08  BEZROUN   List on internal functions created. Translation of backquotes and open improved.
+# 0.700  2020/09/17  BEZROUN   Basic global varibles detection added. Global statment generated for each local subroutine
 #!start ===============================================================================================================================
 
    use v5.10;
@@ -89,9 +90,9 @@
    use lib '.';
    use Softpano qw(autocommit abend banner logme summary out);
    use Perlscan qw(gen_statement  tokenize gen_chunk @ValClass @ValPerl @ValPy $TokenStr);
-   use Pythonizer qw(correct_nest getline prolog output_line append replace destroy preprocessing);
+   use Pythonizer qw(correct_nest getline prolog output_line append replace destroy preprocessing @LocalSub %GlobalVar);
 
-   $VERSION='0.60';
+   $VERSION='0.70';
 #
 # options
 #
@@ -194,10 +195,12 @@ my $start;
       }elsif( $ValPerl[0] eq 'sub' ){
          # Perl has two types of sub statements -- prototype and actual
          correct_nest(0,0);
-         gen_chunk($ValPy[0]); # def
-         gen_chunk($ValPy[1]); # name
+         gen_chunk('def',$ValPy[1],'(perl_arg_array):'); # def name ([list of arguments])
          $LocalSub{$ValPy[1]}=1;
-         gen_chunk('(perl_arg_array):'); # list of arguments
+         if (exists($GlobalVar{$ValPy[1]}) ){
+            gen_statement();
+            gen_chunk($GlobalVar{$ValPy[1]});
+         }
       }elsif( $ValPerl[0] eq 'BEGIN' ){
          correct_nest(0,0);
          gen_chunk($ValPy[0].' perl_begin:'); # def
