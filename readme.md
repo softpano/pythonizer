@@ -1,5 +1,5 @@
 ## Translator from Perl to Python 
-### THIS IS AN ANNOUNCEMENT FOR ALPHA VERSION 0.6 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
+### THIS IS AN ANNOUNCEMENT FOR VERSION 0.7 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
 
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
@@ -62,6 +62,8 @@ If  __DATA__ or __END__ are used a separate file with  the extension  .data  (
 
 
 ### HISTORY 
+
+Sep 18, 2020: Version 0.7 was uploaded. This version creates of the list of global variables for each subroutine to maintain the same visibility in Python as in Perl and generates global statement with the list of such  variables that is inserted in each Python subroutine definition if pythonizer determined that this subroutine access global variables. 
 
 Sep 08, 2020: Version 0.6 was uploaded. Generated source does not contain syntax errors and starts executing in Python interpreter till the first error. List on internal functions created. Translation of backquotes and open statement improved. 
 
