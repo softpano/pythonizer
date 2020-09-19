@@ -11,11 +11,11 @@ Please note that this is an alpha version, not beta (traditionally beta are vers
 
 ### Possible use cases
 
-Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task known only Python. 
+Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task knowns only Python (University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance.) 
 
-University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance.   In this case, a program that "explains" Perl constructs in Python term would be extremely useful and, sometimes, a lifesaver. Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), and in most cases, old scripts will stay too.
+In this case, a program that "explains" Perl constructs in Python term would be extremely useful and, sometimes, a lifesaver. Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), and in most cases, old scripts will stay too.
 
-The other role is to give a quick start for system administrators who want to learn Python (for example, need to support researchers who work with Python), but who currently knows only Perl -- many older school sysadmins dislike Python and for a reason ;-) 
+The other role is to give a quick start for system administrators who want to learn Python (for example, who need to support researchers who work with Python), but who currently knows only Perl -- many older school sysadmins dislike Python and for a reason ;-) 
 
 
 ### Pre-pythonizer implements the first phaze of translation
