@@ -37,7 +37,7 @@ blockquote {font-size: 10pt; font-family: arial; background: #F9F9F9}
 
 <h1>Pythonizer user guide </h1>
 
-<h3>Version 0.6 (Sept 08, 2020)</h3>
+<h3>Version 0.7 (Sept 18, 2020)</h3>
 
 <table border="1" width="100%" bgcolor="#FFFFCC">
    <tr>
@@ -80,6 +80,8 @@ blockquote {font-size: 10pt; font-family: arial; background: #F9F9F9}
 
     <li><b><a href="#Invocation">Invocation</a></b></li>
 
+    <li><b><a href="#History">History</a></b></li>
+
 	
 </ul>
     </li>
@@ -112,8 +114,9 @@ size should be around 3-5K lines of code (~1K line phase 1 and 2-3K line phase 2
 <p>Currently code base reached 4K lines and that close to the&nbsp; limit on which I can maintain this codebase as a hobby project, so 
 some ideas of enhancements need to be abandoned or move to the pre-pythonizer phase.&nbsp; </p>
 
-<p>One example is the creation of the list of global variables in Perl script to maintain the same visibility for them as in the 
-original. </p>
+<p>For example the creation of the list of global variables for each subroutine to maintain the same visibility in Python in version&nbsp; 
+0.7 is implemented&nbsp; without the opportunity to put state variables in a special namespace (they generally do not belong to the 
+global namespace as while they have lifetime similar to global variables their namespace is local). Still it is better then nothing. </p>
 
 <h3><a name="Pre-pythonizer__implements_the_first_phase_of_translation">Pre-pythonizer&nbsp; implements the first phase of 
 translation</a></h3>
@@ -152,40 +155,7 @@ it more &quot;Python-compatible&quot; can be performed on this text instead of t
 <h3><a name="Pythonizer_implements_actual_transformation_of_Perl_into_Python">Pythonizer implements actual transformation of Perl 
 into Python</a></h3>
 
-<p>This guide corresponds to version 0.6 of pythonizer. Running&nbsp; <tt>pythonizer -h</tt> provides a&nbsp; list of options. </p>
-<blockquote>
-
-   <p><b>Changes since version 0.4. </b></p>
-
-   <p>regular expressions now are translated more&nbsp; correctly. Short cut if like <tt>(debug&gt;0) &amp;&amp; say $line</tt> are translated 
-   in more general form then before.&nbsp; </p>
-
-   <p><b>Changes since version 0.4</b></p>
-
-   <p>
-   <span style="color: rgb(36, 41, 46); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">&nbsp;Regular 
-   expression and tr function translation was improved. Many other changes and error corrections. -r (refactor) option implemented to 
-   allow refactoring Perl source via pre-pythonlizer.pl in integrated fashion.</span></p>
-
-   <p><b>Changes&nbsp; since version 0.3</b></p>
-   <ul>
-
-      <li>Scanner is improved</li>
-
-      <li>f-strings are now generated for double quoted literals</li>
-
-      <li>Many errors fixed. </li>
-   </ul>
-
-   <p><b>Changes since version 0.2: </b></p>
-   <ul>
-
-      <li>default version of Python used is now version 3.8; </li>
-
-      <li>option -p 
-allows to set version 2 id you still need generation for Python 2.7 (more constructs will be untranslatable). </li>
-   </ul>
-</blockquote>
+<p>This guide corresponds to version 0.7 of pythonizer. Running&nbsp; <tt>pythonizer -h</tt> provides a&nbsp; list of options. </p>
 
 <p>This is alpha version, so do not expect any perfection. It woks but with errors.&nbsp; It still has bugs and not all constructs 
 are transliterate correctly.</p>
@@ -369,10 +339,79 @@ for the example above) will be created with&nbsp; the content on this section of
 <h3><a name="Subsequent_transformations">Subsequent transformations</a></h3>
 
 <p>For some ideas see <a href="../translating_perl_to_python.shtml">Perl to Python translation</a></p>
+
+<h3><a name="History">History</a></h3>
+<blockquote>
+
+   <p><b>Changes since version 0.6. </b></p>
+   <blockquote>
+
+      <p>This version creates of the list of global variables for each subroutine to maintain the same visibility in Python as in 
+      Perl and generates <tt>global</tt> statement with the list of such&nbsp; variables that is inserted in each Python subroutine 
+      definition if pythonizer determined that this subroutine access global variables. The list might be excessive. </p>
+   </blockquote>
+
+   <p><b>Changes since version 0.5. </b></p>
+
+   <blockquote>
+
+      <p>Regular expressions now are translated more&nbsp; correctly. Short cut if like <tt>(debug&gt;0) &amp;&amp; say $line</tt> are translated 
+   in more general way then before.&nbsp; This is the first version that translates the main test (pre_pythonizer.pl) without syntax 
+      errors.&nbsp;&nbsp; </p>
+   </blockquote>
+
+   <p><b>Changes since version 0.4</b></p>
+
+   <blockquote>
+
+      <p>
+      <span style="color: rgb(36, 41, 46); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Regular 
+   expression and tr function translation was improved. Many other changes and error corrections. -r (refactor) option implemented to 
+   allow refactoring Perl source via pre-pythonlizer.pl in integrated fashion.</span></p>
+   </blockquote>
+
+   <p><b>Changes&nbsp; since version 0.3</b></p>
+   <ul>
+
+      <li>Scanner is improved</li>
+
+      <li>f-strings are now generated for double quoted literals</li>
+
+      <li>Many errors fixed. </li>
+   </ul>
+
+   <p><b>Changes since version 0.2: </b></p>
+   <ul>
+
+      <li>default version of Python used is now version 3.8; </li>
+
+      <li>option -p 
+allows to set version 2 id you still need generation for Python 2.7 (more constructs will be untranslatable). </li>
+   </ul>
+</blockquote>
+
 <hr>
 <!--#include virtual="/adv_news_pane.htm" -->
 <hr>
 <h2><a name="News">Old News</a> ;-) </h2>
+
+<h4>[Sep 18, 2020] <a href="https://github.com/softpano/pythonizer">Version&nbsp; 0.7 uploaded</a> </h4>
+<blockquote>
+
+   <p><b>Changes since version 0.6</b></p>
+
+   <p>This version creates of the list of global variables for each subroutine to maintain the same visibility in Python as in Perl 
+   and generates <tt>global</tt> statement with the list of such&nbsp; variables that is inserted in each Python subroutine 
+   definition if pythonizer determined that this subroutine access global variables. </p>
+</blockquote>
+
+<h4>[Sep 04, 2020] <a href="https://github.com/softpano/pythonizer">Version 0.6 uploaded</a></h4>
+<blockquote>
+
+   <p>Regular expressions now are translated more&nbsp; correctly. Short cut if like <tt>(debug&gt;0) &amp;&amp; say $line</tt> are translated 
+   in more general way then before.&nbsp; This is the first version that translates the main test (pre_pythonizer.pl) without syntax 
+   errors. </p>
+</blockquote>
 
 <h4>[Aug 31, 2020] <a href="https://github.com/softpano/pythonizer">Version 0.5 uploaded</a></h4>
 
