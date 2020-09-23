@@ -6,8 +6,7 @@ This readme is for informational purposes only and is not intended to be updated
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/index.shtml
 
 http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml
-
-Please note that this is an alpha version, not beta (traditionally beta are versions are 0.9 - 0.999). So major changes and enhancements are possible.  
+ 
 
 ### Possible use cases
 
