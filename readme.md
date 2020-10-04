@@ -62,7 +62,7 @@ If  __DATA__ or __END__ are used a separate file with  the extension  .data  (
 
 ### HISTORY 
 
-Oct 02, 2020: Version 0.8 was uploaded. More correct translation of array assignments. Now you need to specify PERL5LIB variable pointing it to the directory with modules to run the program. Global now are initialized after main sub to undef value. Simple installer added
+Oct 02, 2020: Version 0.8 was uploaded. More correct translation of array assignments. Now you need to specify PERL5LIB variable pointing it to the directory with modules to run the program. Global now are initialized after main sub to undef value.  Simple installer for Python programmers who do not know much Perl added (looks like they are the main users of this program, in any case) 
 
 Sep 18, 2020: Version 0.7 was uploaded. This version creates of the list of global variables for each subroutine to maintain the same visibility in Python as in Perl and generates global statement with the list of such  variables that is inserted in each Python subroutine definition if pythonizer determined that this subroutine access global variables. 
 
