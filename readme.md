@@ -45,7 +45,7 @@ The directory into which the main program and modules are downloaded  needs to b
 
 Currently main program and all modules should reside in a single directory from which you will run the program.  
 
-ATTENTION PYTHON PROGRAMMERS: Environment varible PERL5LIB or option -I of the Perl interpreter should specify the directory with modules in order to run the pythonizer. Otherwise modules will NOT befound.   
+ATTENTION PYTHON PROGRAMMERS: Environment varible PERL5LIB or option -I of the Perl interpreter should specify the directory with modules in order to run the pythonizer. Otherwise modules will NOT be found.   
 
 You can run Pythonizer both in Cygwin and Linux. 
 
