@@ -159,6 +159,13 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
          $DB::single = 1;
       }
       tokenize($line);
+      unless(defined($ValClass[0])){
+         if( $::debug>1 ){
+            out("Internal error at line $. : $line");
+            $DB::single = 1;
+         }
+         next;
+      }
       if( $ValClass[0] eq 't' && $ValPerl[0] eq 'my' ){
          for($i=1; $i<=$#ValClass; $i++ ){
             last if( $ValClass[$i] eq '=' );
@@ -205,11 +212,13 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
          }
       }
    }
+   ($::debug) && out("\nDETECTED GLOBAL VARIABLES:");
    foreach $subname (keys %GlobalVar ){
       $GlobalVar{$subname}='global '.substr($GlobalVar{$subname},1);
-      say "$subname: $GlobalVar{$subname}";
+      ($::debug) && out "\t$subname: $GlobalVar{$subname}";
    }
-   say join(' ', keys %LocalSub);
+   ($::debug) && out("\nList of local subroutines:");
+   ($::debug) && out(join(' ', keys %LocalSub));
    #here we have already populated array Sub2name with the list of subs and $global_list with the list of global variables
 }
 

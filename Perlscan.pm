@@ -323,7 +323,7 @@ my ($l,$m);
                $class=$TokenType{$w};
                $ValClass[$tno]=$class;
                if( exists($logical_op{$w}) ){
-                  subscr($source,0,length($w)) = $logical_op{$w};
+                  substr($source,0,length($w)) = $logical_op{$w};
                   $tno-=1;
                   next; # rescan !!!
                }
