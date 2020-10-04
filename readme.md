@@ -1,5 +1,5 @@
 ## Translator from Perl to Python 
-### THIS IS AN ANNOUNCEMENT FOR VERSION 0.7 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
+### THIS IS AN ANNOUNCEMENT FOR VERSION 0.8 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
 
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
