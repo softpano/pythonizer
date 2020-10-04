@@ -45,22 +45,24 @@ The directory into which the main program and modules are downloaded  needs to b
 
 Currently main program and all modules should reside in a single directory from which you will run the program.  
 
-ATTENTION: During invocation of pythonizer  this directory should be current. 
+ATTENTION PYTHON PROGRAMMERS: Environment varible PERL5LIB or option -I of the Perl interpreter should specify the directory with modules in order to run the pythonizer. Otherwise modules will NOT befound.   
 
 You can run Pythonizer both in Cygwin and Linux. 
 
-To "pythonize" the Perl script /path/to/your/program.pl  you need to use the following invocation (the directory in which pythonizer resides should be current otherwise modules will not be loaded) 
+For initial testing to "pythonize" the test Perl script /path/to/your/program.pl  you need to use the something like: 
 
-cd /path/to/pythonizer && pythonizer /path/to/your/program.pl
+export PERL5LIB=~/Perl5/lib && ~/bin/pythonizer /path/to/your/program.pl
 
 If the program runs to the end you will get "pythonized" text in /path/to/your/program.py
 
-It also produces protocol of translation in /tmp/Pythonizer  with size by side Perl and Python code, which allows you to analyses the protocol detect places that need to be commented out translated manually. 
+It also produces protocol of translation in /tmp/Pythonizer with "size by side" Perl and Python code, which allows you to analyses the protocol and detect places that need to be commented out and translated manually. 
 
 If  __DATA__ or __END__ are used a separate file with  the extension  .data  (/path/to/your/program.data for the example above) will be created with  the content on this section of Perl script.
 
 
 ### HISTORY 
+
+Oct 02, 2020: Version 0.8 was uploaded. More correct translation of array assignments. Now you need to specify PERL5LIB variable pointing it to the directory with modules to run the program. Global now are initialized after main sub to undef value. Simple installer added
 
 Sep 18, 2020: Version 0.7 was uploaded. This version creates of the list of global variables for each subroutine to maintain the same visibility in Python as in Perl and generates global statement with the list of such  variables that is inserted in each Python subroutine definition if pythonizer determined that this subroutine access global variables. 
 
