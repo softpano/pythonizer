@@ -378,14 +378,16 @@ main program can load then from @INC array set of directories: </p>
 
 <p>The total size of the codebase in version 0.8 is around 4.3K lines: </p>
 <pre>
-# wc -l Perlscan.pm Pythonizer.pm  pythonizer  Softpano.pm pre_pythonizer.pl
-  1119 Perlscan.pm
-   465 Pythonizer.pm
-  1577 pythonizer
-   339 Softpano.pm
-   825 pre_pythonizer.pl
-  4325 total</pre><p>The total size of the codebase in version 0.6 is slightly over 4K lines: 
-</p>
+ # wc -l Perlscan.pm Pythonizer.pm  pythonizer  Softpano.pm pre_pythonizer.pl
+  1123 Perlscan.pm
+   474 Pythonizer.pm
+  1615 pythonizer
+   340 Softpano.pm
+   797 pre_pythonizer.pl
+  4349 total
+
+</pre>
+<p>The total size of the codebase in version 0.7 is slightly over 4K lines: 
 <pre>
 wc -l Perlscan.pm Pythonizer.pm  pythonizer  Softpano.pm pre_pythonizer.pl
   1107 Perlscan.pm
@@ -417,21 +419,27 @@ wc -l Perlscan.pm Pythonizer.pm  pythonizer  Softpano.pm pre_pythonizer.pl
 
 <h3><a name="Recommended_manual_transformations_of_Perl_code">Recommended manual transformations of Perl code</a></h3>
 
-<p>The first and foremost under-parenthesised Perl script (the scripts which uses built in function without parenthesis, like 
-recommended by &quot;Modern Perl&quot; are translated with more errors by the current version of Pythonizer. </p>
+<p>Recently Perl adopted Python stance of minimizing the number of parenthesis in standard function</p>
 
-<p>Also some complex expressions need to be factored out to get correct translation. But this is to be expected due to limitation of 
+<p>The first and foremost under-parenthesized Perl script (the scripts which uses built-in functions without parenthesis, like 
+recommended by &quot;Modern Perl&quot; are translated with more errors by the current version of Pythonizer then in cases then they are 
+parenthesized.&nbsp; This&nbsp; topic is discussed below in more derails and some examples provided. </p>
+
+<p>Of course, cases are different and a single function as statement is pretty safe without parenthesis. But in complex expression 
+your mileage can vary.&nbsp; In cases where Pythonizer complains adding parenthesizes often allows the correct translation. </p>
+
+<p>Also sometime complex expressions are parsed incorrectly by Pythonizer. In such case you can factored then out and simplify in 
+order to get correct translation. Or translate them manually as in most such cases the proper Python equivalent is different from 
+close to &quot;one to one&quot;&nbsp; translation that Pythonizer provides, anyways. </p>
+
+<p>But this is to be expected due to limitation of 
 the size and the complexity of this project. </p>
-
-<p>Recently Perl adopted Python stance of minimizing the number of parenthesis is different topic that is discussed below </p>
-
-<p>But simply adding parenthesis in cases Pythonizer complains in most cases allow the correct translation. </p>
 
 <p>Generally, Perl provide too much syntax rope and some programmers manage to hang themselves with it: the syntax variety allowed is just an 
 overkill and stimulate adoption of &quot;perverted&quot; constructs which detract from, not add to the clarity of the code.&nbsp;&nbsp; </p>
 
 <p>The most typical 
-example is an excessive use of postfix if constructs. I would understand using them in loop to specify exist condition like </p>
+example of this kind of &quot;syntactic perversions&quot; is the excessive use of postfix if constructs. I would understand using them in loop to specify exist condition like </p>
 <blockquote>
 
    <pre>last if (substr($line,0,3) eq 'EOF');</pre>
@@ -440,25 +448,23 @@ example is an excessive use of postfix if constructs. I would understand using t
 <p>but not like </p>
 <blockquote>
 
-   <pre>x++ if $i&lt;$limit;</pre>
+   <pre>$x++ if $i&lt;$limit;</pre>
 </blockquote>
-
-<p>in this case writing</p>
+or 
+<pre>
+print SQL "SELECT column 1 FROM $var" if (defined $var);
+</pre>
+<p>in the first case writing</p>
 <blockquote>
 
-   <pre>if ( $i &lt; $limit ) { $x++; }</pre>
+   <pre>if $i &lt; $limit { $x++; }</pre>
 </blockquote>
 
 <p>is only two symbols longer but is much clearer and modifiable.&nbsp; Pythonizer recognizes single statements with postfix if or 
-other conditional modifiers, but not</p>
-<blockquote>
+other conditional modifiers, and instead of single statement a comma separate list can be provided making them, essentially, a 
+block: </p>
 
-   <pre>{Block} if(EXPR);</pre>
-</blockquote>
-
-<p>But even in case </p>
-
-<pre class="code">$i=5,$j=10 if( $next iteration);</pre>
+<pre>$i=5,$j=10 if( $next iteration);</pre>
 
 <p>IMHO provides way too much syntax flexibility ;-).You need to transform your such statements to prefix if statements if you want automatic 
 translation.&nbsp;&nbsp; Actually the result looks more readable</p>
@@ -466,6 +472,11 @@ translation.&nbsp;&nbsp; Actually the result looks more readable</p>
 <pre>if( $next iteration ){
    $i=5;$j=10
 }</pre>
+Similary Pythonizer will complain in case of cacading my declarations:
+<pre>
+my $i=my $j=1
+</pre>
+<p>But this probably makes some sence so it might be corrected in later versions. 
 
 <h3><a name="Decision_to_remove_round_brackets">Decision to remove opening&nbsp; and closing round brackets<br>
 &nbsp;in Perl built-in function opened a can of worms</a></h3>
@@ -473,7 +484,8 @@ translation.&nbsp;&nbsp; Actually the result looks more readable</p>
 <p>Situation with under-parenthesized built-in function, that is mentions above,&nbsp; is more complex and here I think Perl implementers made a blunder opening a can of 
 worms. Many statements written in this fashion are ambiguous. </p>
 
-<p>So we will have problems independently of the level of the complexity allowed in Pythonizer. </p>
+<p>So we will have problem with the language itself. Which exists independently of the level of the upper level complexity allowed 
+in Pythonizer and its limitations.&nbsp; </p>
 
 <p>For example:</p>
 <blockquote>
@@ -508,12 +520,7 @@ worms. Many statements written in this fashion are ambiguous. </p>
    DB&lt;103&gt; get_config(split /$s/,$_); 
    2abba baba</pre>
 
-   <blockquote>
-      <blockquote>
 
-         <p><a href="https://perlmonks.org/?abspart=1;displaytype=displaycode;part=7;node_id=11122556">[download]</a></p>
-      </blockquote>
-   </blockquote>
 
   
 
@@ -541,16 +548,21 @@ the code to pythonizer.</p>
 <p>If it hangs or goes into infinite loop, then you need to comments out the offending line(s) and try again. You can use option -d 
 3 to find the line if it is not clear from the listing. </p>
 
-<p>Also old <tt>open </tt>statement where the <i><b>opening&nbsp; mode</b></i> is prefixed to the file is better converted to 
-the new mode when it is a separate argument as not all modes are correctly recognized in the old format. </p>
+<p><em>NOTE:</em> To increase changes of success in translation of long scripts with translation of which you encounter problems. you can split your code into several chunks (for example main program and subs) and try to convert 
+them chunk by chunk. Then you can merge the code and add global declarations manually. </p>
+
+<p>Also the old <tt>open </tt>statement where the <i><b>opening&nbsp; mode</b></i> is prefixed to the file is better converted to 
+the new mode when it is a separate argument as not all modes are correctly recognized in the old format. Typically there are very 
+few open statement in the program so that can easily be done. </p>
 
 <p>Excessive syntax flexibility might helps to explains flimsy error reporting by Perl interpreter, when it accepts clearly 
-syntaxically incorrect programs as valid. Version 5.26.3 also refuse to function properly in some cases, but recovers if you change 
-your Perl code a little bit. I experienced one such situation with <tt>pythonizer</tt>, when I thought that it might be better to 
-switch to GOlang. </p>
+syntaxically incorrect programs as valid. This situation is worse in the debugger then in interpreter itself. </p>
 
-<p><em>NOTE:</em> To increase changes of success in translation of long scripts you can split your code into several chunks (for example main program and subs) and try to convert 
-them chunk by chunk. Then you can merge the code and add global declarations manually. </p>
+<p>Version 5.26.3 also refuse to function properly in some cases, probably hitting some internal bugs or corruption on internal data 
+struictures, which demonstrated itself that a certain statement was executed incorrectly. But it recovers if you change 
+your Perl code a little bit. I experienced one such situation with <tt>pythonizer</tt>, when it was slightly less 900 lines. Luckily 
+as I added code the problem disappeared. But I seriously I thought about 
+switching to GOlang at this point.&nbsp; </p>
 
 <h3><a name="Debugging_generated_Python_code">Debugging generated Python code</a></h3>
 
@@ -579,7 +591,8 @@ and determine the context of the error yourself </p>
 
 <ol>
 
-   <li>Pythonizer does not like statements with omitted round brackets and can mark then untranslatable, while translating them correctly if 
+   <li>Pythonizer does not like some statements and standard functions calls with omitted round brackets (especially in complex 
+   expressions)&nbsp; and can mark then untranslatable, while translating them correctly if 
 brackets are added. </li>
 
    <li>For long scripts to increase changes of success you can split your code into several chunks (for example main program and subs) 
