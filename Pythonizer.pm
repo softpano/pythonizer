@@ -39,8 +39,7 @@ our  ($IntactLine, $output_file, $NextNest,$CurNest, $line);
    $MAXNESTING=9;
    $VERSION = '0.80';
    $refactor=0;  # option -r flag (invocation of pre-pythonizer)
-   $InputMode=0; # 0 -- the first pass( reading from @InputTextA); 1 -- the second pass(reading from STDIN)
-   @InputTextA=(); # fist pass array for the all input text
+   $PassNo=0; # EXTERNAL VAR:  0 -- the first pass ( reading from @InputTextA); 1 -- the second pass(reading from STDIN)
    $InLineNo=0; # counter, pointing to the current like in InputTextA during the first pass
    %LocalSub=(); # list of local subs
    %GlobalVar=(); # generated "external" declaration with the list of global variables.
@@ -119,20 +118,21 @@ sub prolog
          out("Results of transcription are written to the file  $output_file");
          if(  $refactor ){
              out("Option -r (refactor) was specified. file refactored using $refactor as the fist pass over the source code");
-            `$pre_pythonizer -v 0 $fname`;
+            `pre_pythonizer -v 0 $fname`;
          }
-         open (STDIN, '<-',) || die("Can't open $fname for reading");
-         open(SYSOUT,'>',$output_file) || die("Can't open $output_file for writing");
+         open (STDIN, '<',$fname) || die("Can't open $fname for reading");
       }else{
-         open(SYSOUT,'>-') || die("Can't open $STDOUT for writing");
+          abend("Input file should be supplied as the first argument");
       }
       if( $debug){
           print STDERR "ATTENTION!!! Working in debugging mode debug=$debug\n";
       }
       out("=" x 121,"\n");
-      @InputTextA=`cat $fname`;
       get_globals();
-      $InputMode=1;
+      close STDIN;
+      open (STDIN, '<',$fname) || die("Can't open $fname for reading");
+      $PassNo=1;
+      open(SYSOUT,'>',$output_file) || die("Can't open $output_file for writing");
       return;
 } # prolog
 sub get_globals
@@ -154,16 +154,12 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
    while(1){
       $line=getline(); # get the first meaningful line, skipping commenets and  POD
       last unless(defined($line));
-      if( $::debug==2 && $InLineNo > $::breakpoint ){
-         say STDERR "\n\n === Line $InLineNo Perl source: $line ===\n";
+      if( $::debug==2 && $.== $::breakpoint ){
+         say STDERR "\n\n === Line $. Perl source: $line ===\n";
          $DB::single = 1;
       }
       tokenize($line);
       unless(defined($ValClass[0])){
-         if( $::debug>1 ){
-            out("Internal error at line $. : $line");
-            $DB::single = 1;
-         }
          next;
       }
       if( $ValClass[0] eq 't' && $ValPerl[0] eq 'my' ){
@@ -254,26 +250,21 @@ state @buffer; # buffer to "postponed lines. Used for translation of postfix con
       if(  scalar(@buffer) ){
          $line=shift(@buffer);
       }else{
-         if(  $InputMode==0 ){
-            $line=$InputTextA[$InLineNo++];
-            return undef if $InLineNo>$#InputTextA;
-         }else{
-            $line=<>;
-            return $line unless (defined($line)); # End of file
-         }
+         $line=<>;
+         return $line unless (defined($line)); # End of file
       }
 
       chomp($line);
       if(  length($line)==0 || $line=~/^\s*$/ ){
-         output_line('') if(  $InputMode); # blank line
+         output_line('') if(  $PassNo); # blank line
          next;
       }elsif(  $line =~ /^\s*(#.*$)/ ){
          # pure comment lines
-         output_line('',$1) if(  $InputMode);
+         output_line('',$1) if(  $PassNo);
          next;
       }elsif(  $line =~ /^__DATA__/ || $line =~ /^__END__/){
          # data block
-         return undef if(  $InputMode==0 );
+         return undef if(  $PassNo==0 );
          open(SYSDATA,'>',"$source_file.data") || abend("Can't open file $source_file.data for writing. Check permissions" );
          logme('W',"Tail data after __DATA__ or __END__ line are detected in Perl Script. They are written to a separate file $source_file.data");
          while( $line=<> ){
@@ -286,9 +277,9 @@ state @buffer; # buffer to "postponed lines. Used for translation of postfix con
          output_line('',q['''']);
          while($line=<>){
             last if( $line eq '=cut');
-            output_line('',$line) if(  $InputMode);
+            output_line('',$line) if(  $PassNo);
          }
-         output_line('',q['''']) if(  $InputMode);
+         output_line('',q['''']) if(  $PassNo);
       }
       $IntactLine=$line;
       if(  substr($line,-1,1) eq "\r" ){
@@ -306,6 +297,7 @@ state @buffer; # buffer to "postponed lines. Used for translation of postfix con
 # arg 3 -- copy without processing ( (added Sep 3, 2020))
 sub output_line
 {
+return if ($PassNo==0); # no output during the first pass
 my $line=(scalar(@_)==0 ) ? $IntactLine : $_[0];
 my $tailcomment=(scalar(@_)==2 ) ? $_[1] : '';
 my $indent=' ' x $::TabSize x $CurNest;
@@ -441,6 +433,14 @@ my $pos=shift;
 sub destroy
 {
 ($from,$howmany)=@_;
+   # sanity checks
+   if ($from>$#ValClass) {
+       logme('E',"Attempt to delete element  $from in set containing $#ValClass elements. Request ignored");
+       return;
+   }elsif($from+$howmany>$#ValClass){
+      logme('E',"Attempt to delete  $howmany from position $from exceeds the index of the last element $#ValClass. Request ignored");
+      return;
+   }
     substr($TokenStr,$from,$howmany)='';
     splice(@ValClass,$from,$howmany);
     splice(@ValPerl,$from,$howmany);

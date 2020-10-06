@@ -83,18 +83,18 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                 'grep'=>'filter', 'goto'=>'NoTrans!', 'getcwd'=>'os.getcwd',
                 'join'=>'.join(',
                 'keys'=>'.keys',
-                'last'=>'break ','local'=>'','lc'=>'.lower()','length'=>'len','localtime'=>'.localtime',
+                'last'=>'break ', 'local'=>'', 'lc'=>'.lower()', 'length'=>'len', 'localtime'=>'.localtime',
                 'map'=>'map', 'mkdir'=>'os.mkdir', 'my'=>'',
-                'next'=>'continue ','no'=>'NoTrans!',
-                'own'=>'global', 'oct'=>'eval','ord'=>'ord',
-                'package'=>'NoTrans!','pop'=>'.pop()','push'=>'.extend(',
-                'shift'=>'.pop(0)', 'split'=>'re.split','sort'=>'sort','scalar'=>'len', 'say'=>'print','state'=>'global','substr'=>'',
-                   'sub'=>'def','STDERR'=>'sys.stderr','SYSIN'=>'sys.stdin','system'=>'os.system','sprintf'=>'',
-                'rindex'=>'.rfind', 'require'=>'NoTrans!', 'ref'=>'type','rmdir'=>'os.rmdir',
-                'unless'=>'if not ', 'until'=>'while not ','unlink'=>'os.unlink', 'use'=>'NoTrans!', 'uc'=>'.upper()', 'ucfirst'=>'.capitalize()',
-                'STDERR'=>'sys.stderr','STDIN'=>'sys.stdin',  '__LINE__' =>'sys._getframe().f_lineno',
-                'warn'=>'print',
-                'ucfirst'=>'.capitalize()','uc'=>'.upper()','unshift'=>'.insert(0,',
+                'next'=>'continue ', 'no'=>'NoTrans!',
+                'own'=>'global', 'oct'=>'eval', 'ord'=>'ord',
+                'package'=>'NoTrans!', 'pop'=>'.pop()', 'push'=>'.extend(',
+                'say'=>'print','scalar'=>'len', 'shift'=>'.pop(0)', 'split'=>'re.split', 'sort'=>'sort', 'state'=>'global',
+                   'substr'=>'','sub'=>'def','STDERR'=>'sys.stderr','SYSIN'=>'sys.stdin','system'=>'os.system','sprintf'=>'',
+                   'STDERR'=>'sys.stderr','STDIN'=>'sys.stdin', '__LINE__' =>'sys._getframe().f_lineno',
+                'rindex'=>'.rfind', 'require'=>'NoTrans!', 'ref'=>'type', 'rmdir'=>'os.rmdir',
+                'uc'=>'.upper()', 'ucfirst'=>'.capitalize()', 'undef'=>'Null', 'unless'=>'if not ', 'unlink'=>'os.unlink',
+                   'unshift'=>'insert(0,', 'use'=>'NoTrans!', 'until'=>'while not ',
+                 'warn'=>'print',
                );
 
        %TokenType=('eq'=>'>','ne'=>'>','lt'=>'>','gt'=>'>','le'=>'>','ge'=>'>',
@@ -248,14 +248,14 @@ my ($l,$m);
             $ValClass[$tno]='('; # we treat anything inside curvy backets as expression
             $ValPy[$tno]='[';
             $cut=1;
-         }elsif( $s eq '/' && ( $tno==0 || index('~(',$ValClass[$tno-1])>-1)  ){
-              # slash means regex in following cases: if(/abc/ ){0}; $a=~/abc/; /abc/; split(/,/,$tst) REALLY CRAZY STAFF
+         }elsif( $s eq '/' && ( $tno==0 || $ValClass[$tno-1] =~/[~\(,k]/ || $ValPerl[$tno-1] eq 'split') ){
+              # typical cases: if(/abc/ ){0}; $a=~/abc/; /abc/; split(/,/,$text)  split /,/,$text REALLY CRAZY STAFF
               $ValClass[$tno]='q';
               $cut=single_quoted_literal($s,1);
               $ValPerl[$tno]=substr($source,1,$cut-2);
-              $source=substr($source,$cut);
+              substr($source,0,$cut)=''; # you need to provide modifiers to perl_match
               $cut=0;
-              if( $tno>=2 && $ValClass[$tno-2] eq 'f' ){
+              if( $tno>=1 && ( $ValClass[$tno-2] eq 'f' || $ValPerl[$tno-1] eq 'split') ){
                  # in split regex should be plain vanilla -- no re.match is needed.
                  $ValPy[$tno]=put_regex_in_quotes( $ValPerl[$tno]); #  double quotes neeed to be escaped just in case
               }else{
@@ -579,7 +579,7 @@ my ($l,$m);
               if( ($k=index('fdlzes',$s2))>-1 && substr($source,2,1)=~/\s/  ){
                  $ValClass[$tno]='f';
                  $ValPerl[$tno]=$digram;
-                 $ValPy[$tno]=('os.path.isfile','os.path.isdir','os.path.islink','not os.path.getsize','os.path.exists','os.stat.getsize')[$k];
+                 $ValPy[$tno]=('os.path.isfile','os.path.isdir','os.path.islink','not os.path.getsize','os.path.exists','os.path.getsize')[$k];
                  $cut=2;
               }else{
                  $cut=1; # regular minus operator
@@ -624,9 +624,9 @@ my ($l,$m);
       } # while
 
       $TokenStr=join('',@ValClass);
-      if( $::debug>=2 ){
-         $num=($Pythonizer::Input_mode) ? sprintf('%4u',$.) : sprintf('%4u',$Pythonizer::InLineNo);
-         say STDERR "\nLine $num. \$TokenStr: =|",$TokenStr, "|= \@ValPy: ",join(' ',@ValPy);
+      if( $::debug>=2 && $Pythonizer::PassNo ){
+         #$num=($Pythonizer::passno) ? sprintf('%4u',$lineno) : sprintf('%4u',$Pythonizer::InLineNo);
+         say STDERR "\nLine: " . sprintf('%4u',$.) . " TokenStr: =|",$TokenStr, "|= \@ValPy: ",join(' ',@ValPy);
       }
 
 } #tokenize
@@ -853,16 +853,19 @@ my  $groups_are_present;
    }
 
 } # perl_match
+
+sub popup
 #
 # Remove the last item from stack
 #
-sub popup
 {
-    pop(@ValClass);
-    pop(@ValPerl);
-    pop(@ValPy);
-    pop(@ValCom);
+   return unless ($#ValClass>0);
+   pop(@ValClass);
+   pop(@ValPerl);
+   pop(@ValPy);
+   pop(@ValCom);
 }
+
 sub single_quoted_literal
 # ATTENTION: returns position after closing bracket
 # A backslash represents a backslash unless followed by the delimiter or another backslash,
@@ -993,9 +996,10 @@ sub put_regex_in_quotes
 {
 my $string=$_[0];
 my $ver=$_[1];
-my $quote=
 my $result;
-
+   if( $string =~/\$\w+/ ){
+      return substr($string,1); # this case of /$regex/ we return the variable.
+   }
    return qq(r').$string.qq(') if(index($string,"'")==-1 ); # no need to escape any quotes.
    return q(r").$string.qq(") if( index($string,'"')==-1 ); # no need to scape any quotes.
 

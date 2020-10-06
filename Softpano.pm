@@ -130,31 +130,32 @@ state $logfile;
 # Decode obligatory arguments
 #
 state $my_log_dir=$_[0];
+
 my $script_name=$_[1];
 my $title=$_[2]; # this is an optional argumnet which is print STDERRed as subtitle after the title.
 my $log_retention_period=$_[3];
 
-my $timestamp=`date "+%y/%m/%d %H:%M"`; chomp $timestamp;
-my $day=`date '+%d'`; chomp $day;
-my $logstamp=`date +"%y%m%d_%H%M"`; chomp $logstamp;
-my $script_mod_stamp;
-      chomp($script_mod_stamp=`date -r $0 +"%y%m%d_%H%M"`);
-      if( -d $my_log_dir ){
-         if( 1 == $day && $log_retention_period>0 ){
-            #Note: in debugging script home dir is your home dir and the last thing you want is to clean it ;-)
-            `find $my_log_dir -name "*.log" -type f -mtime +$log_retention_period -delete`; # monthly cleanup
-         }
-      }else{
-         `mkdir -p $my_log_dir`;
-      }
+my ($script_mod_stamp,$day);
+   chomp($script_mod_stamp=`date -r $0 +"%y%m%d_%H%M"`);
 
-      $logfile="$my_log_dir/$script_name.$logstamp.log";
-      open(SYSLOG, ">$logfile") || die("Fatal error: unable to open $logfile\n\n");
-      out("\n\n".uc($script_name).": $title (mtime $script_mod_stamp) Started at $timestamp\nLogs are at $logfile. Type -h for help.");
-      for( my $i=4; $i<@_; $i++) {
-         out($_[$i]); # optional subtitles
+   if( -d $my_log_dir ){
+      chomp($day=`date '+%d'`);
+      if( 1 == $day && $log_retention_period>0 ){
+         #Note: in debugging script home dir is your home dir and the last thing you want is to clean it ;-)
+         `find $my_log_dir -name "*.log" -type f -mtime +$log_retention_period -delete`; # monthly cleanup
       }
-      out("=" x 121);
+   }else{
+      `mkdir -p $my_log_dir`;
+   }
+my $logstamp=`date +"%y%m%d_%H%M"`; chomp $logstamp;
+   $logfile="$my_log_dir/$script_name.$logstamp.log";
+   open(SYSLOG, ">$logfile") || die("Fatal error: unable to open $logfile\n\n");
+my $timestamp=`date "+%y/%m/%d %H:%M"`; chomp $timestamp;
+   out("\n\n".uc($script_name).": $title (mtime $script_mod_stamp) Started at $timestamp\nLogs are at $logfile. Type -h for help.");
+   for( my $i=4; $i<@_; $i++) {
+      out($_[$i]); # optional subtitles
+   }
+   out("=" x 121);
 } #banner
 
 
