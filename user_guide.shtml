@@ -37,7 +37,7 @@ blockquote {font-size: 10pt; font-family: arial; background: #F9F9F9}
 
 <h1>Pythonizer user guide </h1>
 
-<h3>Version 0.8 (Oct 02, 2020)</h3>
+<h3>Version 0.82 (Oct 06, 2020)</h3>
 
 <table border="1" width="100%" bgcolor="#FFFFCC">
    <tr>
@@ -94,14 +94,21 @@ program. See installation section below</em></p>
     </li>
 
 	
-    <li><b><a href="#Recommended_manual_transformations_of_Perl_code">Recommended manual transformations of Perl code</a></b></li>
+    <li><b><a href="#Recommended_manual_transformations_of_Perl_code">Recommended manual transformations of Perl code</a></b><ul>
+
+	<li><a href="#Decision_to_remove_round_brackets">Decision to remove opening&nbsp; and closing round brackets
+&nbsp;in Perl built-in function opened a can of worms</a></li>
+
+    <li><a href="#Other_recommended_transformation_of_Perl_code">Other recommended transformations of Perl code</a></li>
+
+	
+</ul>
+    </li>
 
     <li><b><a href="#Debugging_generated_Python_code">Debugging generated Python code</a></b></li>
 
 	
 </ul>
-
-<p>&nbsp;</p>
 <hr noshade color="#FF0000" width="33%" size="7">
 
 <h3><a name="Introduction">Introduction</a></h3>
@@ -154,47 +161,47 @@ global variable should already exist and be initialized) </p>
 to point to proper directory with modules &nbsp; 
 For example:</p>
 
-<pre class="code">perl -I /home/softpano/Pythonizer ~/Pythonizer/pythonizer script_to_be_translated.pl</pre>
+<pre>perl -I /home/softpano/Pythonizer ~/Pythonizer/pythonizer script_to_be_translated.pl</pre>
 
 <p>Alternatively you can specify PERL5LIB environment variable to point to this directory</p>
 <font SIZE="3">
 
-<pre class="code">export PERL5LIB=<tt>/home/softpano/Pythonizer</tt></font></pre>
+<pre>export PERL5LIB=<tt>/home/softpano/Pythonizer</tt></font></pre>
 
 <p>If you already have this variable defined in your bashrc you can add this directory to the end after column, for example</p>
 
-<pre class="code">PERL5LIB=/home/softpano/perl5/lib/:<font SIZE="3">PERL5LIB=</font><tt>/home/softpano/Pythonizer</tt></pre>
+<pre>PERL5LIB=/home/softpano/perl5/lib/:<font SIZE="3">PERL5LIB=</font><tt>/home/softpano/Pythonizer</tt></pre>
 
 <p>After that you do not need to use option -I of Perl interpreter and can invoke the program directly</p>
 
-<pre class="code">~/Pythonizer/pythonizer script_to_be_tranlated.pl</pre>
+<pre>~/Pythonizer/pythonizer script_to_be_tranlated.pl</pre>
 
 <p>In order to specify <tt>pythonizer</tt> without path you need to add the directory in which you installed it to the <tt>PATH </tt>
 or copy the program to one of the directories already in <tt>PATH</tt>, for example<tt> /use/local/bin i</tt>f you are root<tt> or 
 ~/bin </tt>if you are a regular user<tt>.</tt></p>
 
-<p style="text-align: left">Version 0.8 has a simpler installer using which&nbsp; you&nbsp; can quickly move the main&nbsp; script 
+<p>Version 0.8 has a simpler installer using which&nbsp; you&nbsp; can quickly move the main&nbsp; script 
 and module to proper places in your directory tree. It is called <tt>installer</tt> and accept two arguments:</p>
 <ul>
 
    <li>
 
-   <p style="text-align: left"><b>path_to_pythonizer</b> -- directory in which you want to put <tt>pythonizer</tt> and <tt>
+   <p><b>path_to_pythonizer</b> -- directory in which you want to put <tt>pythonizer</tt> and <tt>
    pre_pythonizer.pl</tt></li>
 
 <li>
 
-<p style="text-align: left"><b>path_to_modules</b> -- directory in which you want to put modules (should be defined iether in <tt>@INC</tt> 
+<p><b>path_to_modules</b> -- directory in which you want to put modules (should be defined iether in <tt>@INC</tt> 
 or in environment variable <tt>PERL5LIB</tt>)&nbsp; </li>
 </ul>
 
-<p style="text-align: left">General format of invocation: </p>
+<p>General format of invocation: </p>
 
-<pre style="text-align: left" class="code">installer path_to_pythonizer path_to_modules</pre>
+<pre>installer path_to_pythonizer path_to_modules</pre>
 
-<p style="text-align: left">The directory&nbsp; with pythonizer and modules should be current.&nbsp; For example: </p>
+<p>The directory&nbsp; with pythonizer and modules should be current.&nbsp; For example: </p>
 
-<pre style="text-align: left" class="code">cd ~/Pythonizer &amp;&amp; installer /user/local/bin /user /usr/local/share/perl5</pre>
+<pre>cd ~/Pythonizer &amp;&amp; installer /user/local/bin /user /usr/local/share/perl5</pre>
 
 <p>By default if run as root it assumes <tt>/usr/local/bin</tt> as the target directory for pythonizer and<tt> /usr/local/share/perl5</tt> 
 for modules <p>If run as a regular user defaults are&nbsp; <tt>~/bin</tt> and <tt>~/Perl5/lib</tt>
@@ -257,18 +264,18 @@ into Python</a></h3>
 pythonizer</a></p>
 
 <p>To increase chances of correct translation it is recommended to run the Perl script via
-<span class="css-truncate css-truncate-target d-block width-fit">
-<a class="js-navigation-open link-gray-dark" title="pre_pythonizer.pl" id="9413911e31717187d3a97255af3e0f95-f911160659ba8e3129cfb73f329fb2fd14950434" href="https://github.com/softpano/pythonizer/blob/master/pre_pythonizer.pl">
+<span>
+<a title="pre_pythonizer.pl" id="9413911e31717187d3a97255af3e0f95-f911160659ba8e3129cfb73f329fb2fd14950434" href="https://github.com/softpano/pythonizer/blob/master/pre_pythonizer.pl">
 pre_pythonizer.pl</a></span></p>
 
-<p><span class="css-truncate css-truncate-target d-block width-fit">Parts that can't be translated during the first invocation can 
+<p><span>Parts that can't be translated during the first invocation can 
 be commented outs and iteratively you can modify simplify Perl code and reach the stage when the Perl script is translated more or 
 less OK. After that you can work in Python debugger and iron remaining inconsistencies and cases of incorrect translation of 
 statements. Sometimes algorithm of a part of the program need to be adapted to Python.&nbsp; </span></p>
 
-<p><b><span class="css-truncate css-truncate-target d-block width-fit">Some features:</span></b></p>
+<p><b><span>Some features:</span></b></p>
 
-<ul class="simple">
+<ul>
 
    <li>The Pythonizer is implemented in Perl 5.10+ and does not use any non standard Perl libraries. </li>
 
@@ -302,7 +309,7 @@ statements. Sometimes algorithm of a part of the program need to be adapted to P
 </ul>
 
 <h4><a name="Limitations">Limitations</a></h4>
-<ul class="simple">
+<ul>
 
    <li>No OO constructs&nbsp; such as <tt>bless</tt> and <tt>package</tt> statement are translated.&nbsp; The <tt>use</tt> statement and import 
    and expert of variables from modules also need to be translated manually.&nbsp; </li>
@@ -410,18 +417,21 @@ wc -l Perlscan.pm Pythonizer.pm  pythonizer  Softpano.pm pre_pythonizer.pl
 
 <h3><a name="Recommended_manual_transformations_of_Perl_code">Recommended manual transformations of Perl code</a></h3>
 
-<p>In many case you can get correct translation by simplifying Perl code. Some transformation can be done via macro generator liken 
-M4 some via Perl itself using regular expressions.</p>
+<p>The first and foremost under-parenthesised Perl script (the scripts which uses built in function without parenthesis, like 
+recommended by &quot;Modern Perl&quot; are translated with more errors by the current version of Pythonizer. </p>
 
-<p>If pre-pythonizer transformation of Perl code produces errors you need to do it manually and debug the result before submitting 
-the code to pythonizer.&nbsp; </p>
+<p>Also some complex expressions need to be factored out to get correct translation. But this is to be expected due to limitation of 
+the size and the complexity of this project. </p>
 
-<p>Recently Perl adopted Python stance of minimizing the number of parenthesis and <tt>pythonizer</tt> not always correctly parse 
-such &quot;newer&quot; syntax.&nbsp; Adding parenthesis in such cases allow the correct translation. </p>
+<p>Recently Perl adopted Python stance of minimizing the number of parenthesis is different topic that is discussed below </p>
 
-<p>Perl provide too much syntax rope and some programmers manage to hang themselves with it: the syntax variety allowed is just an 
-overkill and stimulate adoption of &quot;perverted&quot; constructs which detract from, not add to the clarity of the code.&nbsp;&nbsp; One 
-example is excessive use of postfix if constructs. I would understand using them in loop to specify exist condition like </p>
+<p>But simply adding parenthesis in cases Pythonizer complains in most cases allow the correct translation. </p>
+
+<p>Generally, Perl provide too much syntax rope and some programmers manage to hang themselves with it: the syntax variety allowed is just an 
+overkill and stimulate adoption of &quot;perverted&quot; constructs which detract from, not add to the clarity of the code.&nbsp;&nbsp; </p>
+
+<p>The most typical 
+example is an excessive use of postfix if constructs. I would understand using them in loop to specify exist condition like </p>
 <blockquote>
 
    <pre>last if (substr($line,0,3) eq 'EOF');</pre>
@@ -430,26 +440,108 @@ example is excessive use of postfix if constructs. I would understand using them
 <p>but not like </p>
 <blockquote>
 
-   <pre class="code">x++ if $i&lt;$limit;</pre>
+   <pre>x++ if $i&lt;$limit;</pre>
 </blockquote>
 
 <p>in this case writing</p>
 <blockquote>
 
-   <pre class="code">if ( $i &lt; $limit ) { $x++; }</pre>
+   <pre>if ( $i &lt; $limit ) { $x++; }</pre>
 </blockquote>
 
 <p>is only two symbols longer but is much clearer and modifiable.&nbsp; Pythonizer recognizes single statements with postfix if or 
 other conditional modifiers, but not</p>
 <blockquote>
 
-   <pre class="code">{Block} if(EXPR);</pre>
+   <pre>{Block} if(EXPR);</pre>
 </blockquote>
 
-<p>IMHO this is way too much syntax flexibility ;-).You need to transform your source to prefix if statements if you want automatic 
-translation.&nbsp;&nbsp; </p>
+<p>But even in case </p>
 
-<p>Also old <tt>open </tt>&nbsp;statement where the <i><b>opening&nbsp; mode</b></i> is prefixed to the file is better converted to 
+<pre class="code">$i=5,$j=10 if( $next iteration);</pre>
+
+<p>IMHO provides way too much syntax flexibility ;-).You need to transform your such statements to prefix if statements if you want automatic 
+translation.&nbsp;&nbsp; Actually the result looks more readable</p>
+
+<pre>if( $next iteration ){
+   $i=5;$j=10
+}</pre>
+
+<h3><a name="Decision_to_remove_round_brackets">Decision to remove opening&nbsp; and closing round brackets<br>
+&nbsp;in Perl built-in function opened a can of worms</a></h3>
+
+<p>Situation with under-parenthesized built-in function, that is mentions above,&nbsp; is more complex and here I think Perl implementers made a blunder opening a can of 
+worms. Many statements written in this fashion are ambiguous. </p>
+
+<p>So we will have problems independently of the level of the complexity allowed in Pythonizer. </p>
+
+<p>For example:</p>
+<blockquote>
+   It looks like with parenthesis elimination drive Perl developers&nbsp; into the situation similar to Chinese situation with the 
+   elimination of sparrows.<p>Today I encountered the following ambiguous statement written in &quot;de-parenthesized&quot; &quot;Modern Perl&quot;:</p>
+
+   <pre>get_config(split /$s/,$_);</pre>
+
+   <p><a href="https://perlmonks.org/?abspart=1;displaytype=displaycode;part=1;node_id=11122556">[download]</a></p>
+
+   <p>Where it is completely unclear if</p>
+
+   <ol>
+
+      <li>We have two arguments to <tt>get_config</tt> and one argument to <tt>split</tt>&nbsp;(regular expression &lt;tt&gt;/$s/&lt;tt&gt;, 
+      and split is assumed to be operating on $_) </li>
+
+      <li>We have two arguments <tt>to split (/$s/ </tt>and<tt> $_ )</tt>&nbsp;and one argument (expression) to <tt>get_config</tt>. 
+   
+      </li>
+   </ol>
+   
+   <p>It is accepted by interpreter as case (2) which 
+   IMHO is correct, but still pretty arbitrary, especially if you write
+<pre>get_config(split /$s/,$i)</pre>
+<p>instead.</p>
+
+   <pre>
+   DB&lt;100&gt; sub get_config{ print scalar(@_), join(' ',@_),&quot;\n&quot;} 
+   DB&lt;101&gt; $s=' '; 
+   DB&lt;102&gt; $_=qq(abba baba); 
+   DB&lt;103&gt; get_config(split /$s/,$_); 
+   2abba baba</pre>
+
+   <blockquote>
+      <blockquote>
+
+         <p><a href="https://perlmonks.org/?abspart=1;displaytype=displaycode;part=7;node_id=11122556">[download]</a></p>
+      </blockquote>
+   </blockquote>
+
+  
+
+   <p>Unless this problem is fixed, this is an argument for sticking to earlier versions of Perl 5 and avoiding &quot;de-parenthesized&quot; 
+   &quot;Modern Perl&quot;. Looks like &quot;Parenthesis eliminators&quot; essentially harmed the language, while trying to help. That's happens, but 
+   this is a rather sad situation.</p>
+
+   <p>In any case, versions after 5.26 probably will reach commercial Linuxes in 5 to 10 years time-frame so there is still a time 
+   to fix this.</p>
+</blockquote>
+
+<h3><a name="Other_recommended_transformation_of_Perl_code">Other recommended transformations of Perl code</a></h3>
+
+<p>While parenthesizing built-in function in statements which caused problems for Pythonizer is number one recommendation, there are 
+several other. </p>
+
+<p>In many case you can get more correct translation via Pythonizer by simplifying Perl code. Some transformation can be done via macro generator like 
+M4 some via Perl itself using regular expressions.</p>
+
+<p>If pre-pythonizer transformation of Perl code produces errors you need to fix them before submitting 
+the code to pythonizer.</p>
+
+<p>Pythonizer expects syntaxically correct Perl code. &nbsp; </p>
+
+<p>If it hangs or goes into infinite loop, then you need to comments out the offending line(s) and try again. You can use option -d 
+3 to find the line if it is not clear from the listing. </p>
+
+<p>Also old <tt>open </tt>statement where the <i><b>opening&nbsp; mode</b></i> is prefixed to the file is better converted to 
 the new mode when it is a separate argument as not all modes are correctly recognized in the old format. </p>
 
 <p>Excessive syntax flexibility might helps to explains flimsy error reporting by Perl interpreter, when it accepts clearly 
@@ -458,7 +550,7 @@ your Perl code a little bit. I experienced one such situation with <tt>pythonize
 switch to GOlang. </p>
 
 <p><em>NOTE:</em> To increase changes of success in translation of long scripts you can split your code into several chunks (for example main program and subs) and try to convert 
-them chunk by chunk and add global declarations manually. </p>
+them chunk by chunk. Then you can merge the code and add global declarations manually. </p>
 
 <h3><a name="Debugging_generated_Python_code">Debugging generated Python code</a></h3>
 
@@ -466,7 +558,7 @@ them chunk by chunk and add global declarations manually. </p>
 
 <p>The standard invocation is something like </p><font SIZE="3">
 
-<pre class="code">python3.8 -m pdb maintest.py</pre>
+<pre>python3.8 -m pdb maintest.py</pre>
 </font>
 
 <p>You can run the script till the first error with the command 'c' and if you are lucky at this point you have some useful 
@@ -506,19 +598,24 @@ can be renamed into <tt>maxi_limit</tt></li>
 
 <p>Tickets can be opened on GitHub. </p>
 
-<p>The ticket should be reproducible on the most recent uploaded version; non reproducible tickets related to earlier version will be ignored. </p>
+<p>The ticket should be reproducible on the most recent uploaded version; non reproducible tickets related to earlier version will be ignored.&nbsp; 
+Information proved should be enough to reproduce the error: </p>
 
-<p>If case of internal errors, for example rejection of a valid statement, incorrect translation,&nbsp; or unlimited recursion please provide the current line and the context (say 3&nbsp; &quot;before&quot; and 3 &quot;after&quot; lines.) </p>
+<ul>
 
-<p>It is recommended that you run pythonizer with the debugging option -d 3 to generate additional output relevant fragment of which&nbsp; 
-you can submit with the ticket. </p>
+   <li>If case of internal errors, for example rejection of a valid statement, incorrect translation,&nbsp; or unlimited recursion please provide the current line and the context (say 
+   10&nbsp; &quot;before&quot; and 10 &quot;after&quot; lines.) </li>
+</ul>
 
-<p>&nbsp;</p>
+<p>It is recommended that you run pythonizer with the debugging option <tt>-d 3</tt> to generate additional output relevant fragment 
+(only relevant fragment) can be attaches as a file to the ticket.</p>
 
-<p>&nbsp;</p>
+<p>Samples the cause internal errors also need to be attached as files to save my time.&nbsp; </p>
+
+
 
 <h3><a name="History">History</a></h3>
-<blockquote>
+
 
    <p><b>Version 0.8 uploaded</b></p>
    <blockquote>
@@ -529,6 +626,18 @@ you can submit with the ticket. </p>
       PERL5LIB variable pointing it to the directory with modules to run the program. Global variable now are initialized after main sub to undef value 
       to create a global namespace. Previously this was done incorrectly.&nbsp; Simple installer for Python programmers who do not 
       know much Perl added: the problem proved to be useful as a help for understanding Perl scripts by Python programmers. </p>
+
+      <p><b>Changes in pre_pythonizer.pl</b></p>
+
+      <p>Unlike previous versions,&nbsp; the current version by default <em>does not create</em> <tt>main</tt> <em>subroutine out of statement found on nesting level 
+      zero</em>, as it introduces some errors. You need specify option <tt>-m</tt> to create it. </p>
+
+      <p><em>NOTE:</em> All Python statements on nesting level zero should starts from the beginning of the line which is ugly, but 
+      you can enclose them in the dummy <tt>if</tt> statement </p>
+
+      <pre>if True: </pre>
+
+      <p>to create the artificial nesting level 1</p>
    </blockquote>
 
    <p><b>Version 0.7 uploaded</b></p>
@@ -558,7 +667,7 @@ you can submit with the ticket. </p>
       <p><b>Changes since version 0.4</b></p>
 
       <p>
-      <span style="color: rgb(36, 41, 46); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Regular 
+      <span>Regular 
    expression and tr function translation was improved. Many other changes and error corrections. -r (refactor) option implemented to 
    allow refactoring Perl source via pre-pythonlizer.pl in integrated fashion.</span></p>
    </blockquote>
@@ -596,7 +705,30 @@ allows to set version 2 id you still need generation for Python 2.7 (more constr
 <hr>
 <h2><a name="News">Old News</a> ;-) </h2>
 
-<h4>[Sep 18, 2020] <a href="https://github.com/softpano/pythonizer">Version&nbsp; 0.7 uploaded</a> </h4>
+   <h4>[Oct 05, 2020] <a href="https://github.com/softpano/pythonizer">Version&nbsp; 0.8 uploaded</a> </h4>
+   <blockquote>
+
+      <p><b>Changes since version 0.7 </b></p>
+
+      <p>More correct translation of array assignments. Some non-obvious bugs in translation were fixed. Now you need to specify 
+      <tt>PERL5LIB</tt> variable pointing it to the directory with modules to run the program. Global variable now are initialized after main sub to undef value 
+      to create a global namespace. Previously this was done incorrectly.&nbsp; Simple installer for Python programmers who do not 
+      know much Perl added: the problem proved to be useful as a help for understanding Perl scripts by Python programmers. </p>
+
+      <p><b>Changes in pre_pythonizer.pl</b></p>
+
+      <p>Current version by default <em>does not create</em> <tt>main</tt> <em>subroutine out of statement found on nesting level 
+      zero</em>, as it introduces some errors. You need specify option <tt>-m</tt> to create it. </p>
+
+      <p><em>NOTE:</em> All Python statements on nesting level zero should starts from the beginning of the line which is ugly, but 
+      you can enclose them in the dummy <tt>if</tt> statement </p>
+
+      <pre>if True: </pre>
+
+      <p>to create artificial nesting level 1</p>
+   </blockquote>
+
+   <h4>[Sep 18, 2020] <a href="https://github.com/softpano/pythonizer">Version&nbsp; 0.7 uploaded</a> </h4>
 <blockquote>
 
    <p><b>Changes since version 0.6</b></p>
@@ -627,16 +759,16 @@ allows to set version 2 id you still need generation for Python 2.7 (more constr
       <ul>
 
          <li>
-         <span style="color: rgb(36, 41, 46); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Regular 
+         <span>Regular 
    expression and tr function translation was improved. </span></li>
 
          <li>
-         <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'; font-size: 16px; color: #24292E; letter-spacing: normal; background-color: #FFFFFF">
-         Many</span><span style="color: rgb(36, 41, 46); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"> other changes and error corrections. 
+         <span>
+         Many</span><span> other changes and error corrections. 
          </span></li>
 
          <li>
-         <span style="color: rgb(36, 41, 46); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">-r (refactor) option implemented to 
+         <span>-r (refactor) option implemented to 
    allow refactoring Perl source via pre-pythonlizer.pl in integrated fashion.</span></li>
       </ul>
 </blockquote>
@@ -674,10 +806,11 @@ allows to set version 2 id you still need generation for Python 2.7 (more constr
 
 <ul>
 
+   <li><a href="../../Debugging/index.shtml">Python Debugging</a></li>
+
    <li><a href="http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/index.shtml">Python for Perl programmers</a></li>
 
-   <li><a href="protocol_of_translation_of_pre_pythonizer020.shtml">Full protocol of translation of pre_pythonizer.pl by version 0.53 of 
-pythonizer</a></li>
+   <li><a href="protocol_of_translation_of_pre_pythonizer020.shtml">Full protocol of translation of pre_pythonizer.pl </a></li>
 
    <li><a href="http://pleac.sourceforge.net/">PLEAC - Programming Language Examples Alike Cookbook</a></li>
 
