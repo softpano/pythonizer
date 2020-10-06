@@ -118,7 +118,7 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                   'say'=>'f','scalar'=>'f','shift'=>'f', 'split'=>'f', 'sprintf'=>'f', 'sort'=>'f','system'=>'f', 'state'=>'t', 'sub'=>'k','substr'=>'f',
                   'values'=>'f',
                   'warn'=>'f', 'when'=>'C', 'while'=>'c',
-                  'unless'=>'c', 'unshift'=>'f','until'=>'c','uc'=>'f', 'ucfirst'=>'f','use'=>'c',
+                  'undef'=>'f', 'unless'=>'c', 'unshift'=>'f','until'=>'c','uc'=>'f', 'ucfirst'=>'f','use'=>'c',
                   );
 
 #

@@ -79,7 +79,7 @@
 # 0.700  2020/09/17  BEZROUN   Basic global varibles detection added. Global statement generated for each local subroutine
 # 0.800  2020/10/02  BEZROUN   More correct translation of array assignments. Globals initialiazed after main sub.  Installer added
 # 0.810  2020/10/05  BEZROUN   Pre-pythonizer by default does not create main subroutine
-# 0.820  2020/10/06  BEZROUN   Function parcing rewrtten to accoundate some "bracketless" cases which now became a norm in Perl
+# 0.820  2020/10/06  BEZROUN   Function parsing rewritten to accomodate some "bracketless" cases which now became a norm in Perl
 #!start ===============================================================================================================================
 
    use v5.10;
@@ -99,7 +99,7 @@
 # options
 #
    $PyV=3; # version of Python for generation
-   $breakpoint=9999; # line from which to debug code. See Pythonizer
+   $breakpoint=9999; # line from which to debug code. See Pythonizer user guide
    $debug=0;  # 0 production mode 1 - development/testing mode. 2-9 debugging modes
               # 4 -stop at Perlscan.pm
    $HOME=$ENV{'HOME'}; # the directory used for backups if debug>0
@@ -1298,11 +1298,13 @@ my ($bracketed, $end_pos, $k, $split, $split2, $delta, $dict, $incr, $arg1, $arg
          }
          return $k;
       }elsif($perl_name eq 'undef'  ){
-         for(my $i=$start; $i<$limit; $i+=2 ){
-            last if ($ValClass[$i+1] ne ',');
-            gen_chunk("$ValPy[$i]=None");
+         gen_chunk("$ValPy[$start]");
+         for(my $i=$start+1; $i<$end_pos; $i+=2 ){
+            last if ($ValClass[$i] ne ',');
+            gen_chunk("=$ValPy[$i+1]");
          }
-         return $limit+1;
+         gen_chunk("=None");
+         return $end_pos+1;
       }
       #
       # Generic Perl built-in function
