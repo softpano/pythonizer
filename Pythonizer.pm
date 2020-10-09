@@ -19,19 +19,17 @@ package Pythonizer;
 # 00.70  2020/09/03  BEZROUN   Stack manipulation defined more completly and moved from main script to Pythonizer.om
 # 00.80  2020/09/17  BEZROUN   Basic global varibles detection added. Global statement now is generated for each subroutine
 
-use v5.10;
+use v5.10.1;
    use warnings;
    use strict 'subs';
    use feature 'state';
+   use Perlscan qw(tokenize $TokenStr @ValClass @ValPerl @ValPy @ValType);
    use Softpano qw(abend logme out getopts standard_options);
-   use Perlscan qw(tokenize  $TokenStr @ValClass  @ValPerl @ValPy @ValType);
-
 require Exporter;
 
 our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 @ISA = qw(Exporter);
-#@EXPORT = qw(correct_nest getline output_open get_params prolog epilog output_line $IntactLine $::debug $::breakpoint $::TabSize $::TailComment);
-@EXPORT = qw(preprocess_line correct_nest getline prolog output_line append replace destroy preprocessing @LocalSub %GlobalVar);
+@EXPORT = qw(preprocess_line correct_nest getline prolog output_line @LocalSub %GlobalVar);
 our  ($IntactLine, $output_file, $NextNest,$CurNest, $line);
    $::TabSize=3;
    $::breakpoint=0;
@@ -158,7 +156,7 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
          say STDERR "\n\n === Line $. Perl source: $line ===\n";
          $DB::single = 1;
       }
-      tokenize($line);
+      Perlscan::tokenize($line);
       unless(defined($ValClass[0])){
          next;
       }
@@ -238,7 +236,7 @@ sub getline
 #
 {
 state @buffer; # buffer to "postponed lines. Used for translation of postfix conditinals among other things.
-
+   return $line if( scalar(@Perlscan::BufferValClass)>0  ); # block input if we process token buffer Oct 8, 2020 -- NNB
    if(  scalar(@_)>0 ){
        unshift(@buffer,@_); # buffer line for processing in the next call;
        return
@@ -281,12 +279,15 @@ state @buffer; # buffer to "postponed lines. Used for translation of postfix con
          }
          output_line('',q['''']) if(  $PassNo);
       }
-      $IntactLine=$line;
+
       if(  substr($line,-1,1) eq "\r" ){
          chop($line);
       }
       $line =~ s/\s+$//; # trim tailing blanks
       $line =~ s/^\s+//; # trim leading blanks
+      if ($line ne '{' &&  $line ne '}' ){
+         $IntactLine=$line;
+      }
       return  $line;
    }
 }
@@ -389,9 +390,15 @@ my $delta;
       return;
    }
    if(  $NextNest+$delta > $MAXNESTING ){
-      logme('E',"Attempt to set next nesting level above the treshold($MAXNESTING) ingnored");
+      if ($::debug>2) {
+         logme('E',"Attempt to set next nesting level above the treshold($MAXNESTING) ignored");
+         $DB::single = 1;
+      }
    }elsif(  $NextNest+$delta < 0 ){
-      logme('S',"Attempt to set nesting level below zero ignored");
+      if ($::debug>2 ) {
+         logme('S',"Attempt to set the next nesting level below zero ignored");
+         $DB::single = 1;
+      }
    }else{
      $NextNest+=$delta;
    }
@@ -411,64 +418,6 @@ my $delta;
        }
    }
 }
-sub append
-{
-   $TokenStr.=$_[0];
-   $ValClass[scalar(@ValClass)]=$_[0];
-   $ValPerl[scalar(@ValPerl)]=$_[1];
-   $ValPy[scalar(@ValPy)]=$_[2];
-   $ValType[scalar(@ValPy)]=( scalar(@_)>3 ) ? $_[3]:'';
-}
-sub replace
-{
-my $pos=shift;
-   if(  $pos>$#ValClass ){
-      abend('Replace position $pos is outside upper bound');
-   }
-   substr($TokenStr,$pos,1)=$ValClass[$pos]=$_[0];
-   $ValPerl[$pos]=$_[1];
-   $ValPy[$pos]=$_[2];
-   $ValType[$pos]='';
-}
-sub destroy
-{
-($from,$howmany)=@_;
-   # sanity checks
-   if ($from>$#ValClass) {
-       logme('E',"Attempt to delete element  $from in set containing $#ValClass elements. Request ignored");
-       return;
-   }elsif($from+$howmany>$#ValClass){
-      logme('E',"Attempt to delete  $howmany from position $from exceeds the index of the last element $#ValClass. Request ignored");
-      return;
-   }
-    substr($TokenStr,$from,$howmany)='';
-    splice(@ValClass,$from,$howmany);
-    splice(@ValPerl,$from,$howmany);
-    splice(@ValPy,$from,$howmany);
-    splice(@ValType,$from,$howmany);
-}
-sub preprocessing
-#
-# absence of autoincrament and autodecrament operators is a problem... May be even a wart.
-#
-{
-my $wart_pos;
-    #postincement
-   if(  substr($TokenStr,0,6) eq 's(s^)='){
-      logme('E','Increment of array index found on the left side of assignement and replaced by append function. This guess might be wrong');
-      destroy(2,4);
-      replace( 0,'f','f',$ValPy[0].'.append' );
-      replace(1,'(','(','(');
-      append(')',')',')');
-   }elsif(  ($wart_pos=index($TokenStr,'s^)')) >-1  && $ValPerl[$wart_pos+2] eq ']' ){
-       logme('S',"Posfix operation $ValPerl[$wart_pos+1] currently can't be tranlated  correctly. Attempt to replace it with walrus operator needs modification of algorithm and currently lead to syntax error which is a bug in the Python interpreter");
-       $ValPy[$wart_pos]='('.$ValPy[$wart_pos].':='.$ValPy[$wart_pos].'+1)';
-       $ValPy[$wart_pos+1]='';
-       #$ValClass[$wart_pos]='f';
-   }elsif(  ($wart_pos=index($TokenStr, '(^s')) >-1 && $ValPerl[$wart_pos] eq '[' ){
-       $ValPy[$wart_pos+2]='('.$ValPy[$wart_pos+2].':='.$ValPy[$wart_pos+2].'+1)';
-       $ValPy[$wart_pos+1]='';
-   }
-} # preprocessing
+
 
 1;

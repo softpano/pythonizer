@@ -80,9 +80,10 @@
 # 0.800  2020/10/02  BEZROUN   More correct translation of array assignments. Globals initialiazed after main sub.  Installer added
 # 0.810  2020/10/05  BEZROUN   Pre-pythonizer by default does not create main subroutine
 # 0.820  2020/10/06  BEZROUN   Function parsing rewritten to accomodate some "bracketless" cases which now became a norm in Perl
+# 0.830  2020/10/08  BEZROUN   Implementation of postfix conditional is completly reqritten and now uses token buffering
 #!start ===============================================================================================================================
 
-   use v5.10;
+   use v5.10.1;
    use warnings;
    use strict 'subs';
    use feature 'state';
@@ -91,33 +92,44 @@
 # Modules used ( from the current directory to make debugging more convenient; will change later)
 #
    use Softpano qw(autocommit abend banner logme summary out);
-   use Perlscan qw(gen_statement  tokenize gen_chunk @ValClass @ValPerl @ValPy $TokenStr);
-   use Pythonizer qw(correct_nest getline prolog output_line append replace destroy preprocessing @LocalSub %GlobalVar);
 
-   $VERSION='0.82';
+   use Perlscan ('gen_statement', 'tokenize', 'gen_chunk', 'append', 'replace',
+                 'insert', 'destroy', 'autoincrement_fix', '@ValClass', '@ValPerl', '@ValPy', '@ValCom',
+                 '@ValType', '$TokenStr');
+
+   use Pythonizer qw(correct_nest getline prolog output_line @LocalSub %GlobalVar);
+
+   $VERSION='0.83';
+   $SCRIPT_NAME='pythonizer';
 #
 # options
 #
    $PyV=3; # version of Python for generation
    $breakpoint=9999; # line from which to debug code. See Pythonizer user guide
-   $debug=0;  # 0 production mode 1 - development/testing mode. 2-9 debugging modes
-              # 4 -stop at Perlscan.pm
-   $HOME=$ENV{'HOME'}; # the directory used for backups if debug>0
+   $debug=0;  # 0 -- production mode
+              # 1 -- testing mode
+              # 2 -- first pass debugging
+              # 3 -- provides tracing during the second pass (useful for users for trableshooing infinite loops)
+              # 4 -- stop at Perlscan.pm
+              # 5 -- stop at particular error message.
+   $HOME=$ENV{'HOME'}; # the directory used for autobackup (only if debug>0)
    if( $^O eq 'cygwin' ){
       # $^O is built-in Perl Variable that contains OS name
       $HOME="/cygdrive/f/_Scripts";  # CygWin development mode -- the directory used for backups
    }
-   $SCRIPT_NAME='pythonizer';
+   #
+   # Local dictionaries
+   #
+   %PyOpen=('<'=>'r', '>'=>'w', '>>'=>'a', '+<'=>'+');
+
    $LOG_DIR='/tmp/'.ucfirst($SCRIPT_NAME);
    banner($LOG_DIR,$SCRIPT_NAME,"Fuzzy translator of Python to Perl. Version $VERSION",30); # Opens SYSLOG and print STDERRs banner; parameter 4 is log retention period
    prolog(); # sets all options, including breakpoint
+   @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=();
    if( $debug > 0 ){
       autocommit("$HOME/Archive",$ENV{'PERL5LIB'},qw(Softpano.pm Perlscan.pm Pythonizer.pm));
    }
-#
-# Local dictionaries
-#
-   %PyOpen=('<'=>'r', '>'=>'w', '>>'=>'a', '+<'=>'+');
+
 #
 # Skip initial block of comments
 #
@@ -144,32 +156,52 @@
 #
 #Main loop
 #
-my $start;
-   while( defined($line) ){
-      last unless(defined($line));
+   @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=();
+my ($start,$token_buffer_active);
+   $token_buffer_active=0;
+   while( defined($line) || scalar(@Perlscan::BufferValClass)>0 ){
       $TrStatus=0;
       if( $debug>1 ){
-         say STDERR "\n\n === Line $. Perl source: $line ===\n";
+         say STDERR "\n\n === Line $. Perl source:".(defined($line)?$line:$ValPerl[0])."===\n";
          if( $.>=$breakpoint ){
-            unless ( $DB::single ){
-               logme('S', "Breakpoint was triggered at line $. in pythonizer.pl");
-               $DB::single = 1;
-            }
+             logme('S', "Breakpoint was triggered at line $. in pythonizer.pl");
+             # $breakpoint=999999;
+             $DB::single = 1;
          }
       }
 #
-# You need to tokenize the statement first before translation
+# You need to claw back tokens from buffer for postfix conditionals. This is pretty brittle code.
 #
-      tokenize($line);
-      if( scalar(@ValClass)==0 ){
+      if( scalar(@Perlscan::BufferValClass)>0 ){
+         if($token_buffer_active==0){
+            @ValClass=@ValPerl=('{');
+            $token_buffer_active=1;
+         }elsif($token_buffer_active==1){
+            @ValClass=@Perlscan::BufferValClass;
+            $TokenStr=join('',@ValClass);
+            @ValCom=@Perlscan::BufferValCom;
+            @ValPerl=@Perlscan::BufferValPerl;
+            @ValPy=@Perlscan::BufferValPy;
+            $token_buffer_active=2;
+         }else{
+            @ValClass=@ValPerl=('}');
+            @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=();
+            $token_buffer_active=0;
+         }
+
+      }else{
+         tokenize($line);
+      }
+      if( scalar(@ValClass)==0 || ! defined($ValClass[0]) ){
           $line=getline(); # skip broken
           next;
       }
       #
       # Selected cases of postfix and prefix operator can be translated; other not
       #
-      if (index($TokenStr,'^')>-1){
-         preprocessing();
+
+      if( index($TokenStr,'s^')>-1){
+         autoincrement_fix() # exported function in Pythonizer
       }
       #
       # Statements
@@ -231,7 +263,7 @@ my $start;
                output_line("$ValPy[1]=None");
             }elsif( $ValPerl[0] eq 'state' || $ValPerl[0] eq 'own' ){
                # $i++;
-               gen_chunk($ValPy[0].$ValPy[1]);
+               gen_chunk($ValPy[0],$ValPy[1]);
             }
             finish();
             next;
@@ -242,7 +274,7 @@ my $start;
                $TrStatus=assignment(1);
             }else{
                for($i=2; $i<$last;$i++){
-                  if ($ValPy[$i] eq '.'){
+                  if ($ValPy[$i] eq ','){
                      gen_chunk('=');
                   }else{
                      gen_chunk($ValPy[$i]);
@@ -328,7 +360,12 @@ my $start;
           $TrStatus=assignment(0);
       }elsif( $ValClass[0] eq 'c' ){
           #normal control statement: if/while/for, etc -- next line is always nested.
-          # in foreach loop "(" is absent )
+          # in foreach loop "(" is absent ) do in perl you can's distibush between postfix fro and foreach loop without parens
+          if( defined($ValType[0]) && $ValType[0] eq 'P' && $ValClass[1] ne '(' && $ValPerl[0] ne 'for' ){
+              insert(1,'(','(','(');
+              append(')',')',')');
+          }
+
           if ($TokenStr=~/^c\(\!f\(?i\,/ && $ValPerl[3] eq 'open' ){
             $TrStatus=open_fun(3,'c');
           }else{
@@ -1600,6 +1637,7 @@ my ($replacement,$k);
       } #for
       return $k;
 } #left_hand_substr
+
 __DATA__
 def PostIncr(name, local={}):
     #Equivalent to name++

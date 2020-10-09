@@ -43,7 +43,7 @@ package Perlscan;
 # 0.90 2020/09/17  BEZROUN   Adapted for detection of global identifiers.
 # 0.91 2020/09/18  BEZROUN   ValType array added and now used in pass 0: values set to 'X' for special variables
 #==start=============================================================================================
-use v5.10;
+use v5.10.1;
 use warnings;
 use strict 'subs';
 use feature 'state';
@@ -54,12 +54,12 @@ require Exporter;
 our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
 @ISA = qw(Exporter);
-@EXPORT = qw(gen_statement tokenize gen_chunk @ValClass  @ValPerl  @ValPy @ValCom @ValType $TokenStr);
+@EXPORT = qw(gen_statement tokenize gen_chunk append replace destroy insert destroy autoincrement_fix @ValClass  @ValPerl  @ValPy @ValCom @ValType $TokenStr);
 #our (@ValClass,  @ValPerl,  @ValPy, $TokenStr); # those are from main::
 
   $VERSION = '0.91';
   #
-  # types of veraiables detected during the first pass; to be implemented later
+  # types of veriables detected during the first pass; to be implemented later
   #
   #%is_numeric=();
 #
@@ -135,12 +135,14 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                );
 my ($source,$cut,$tno)=('',0,0);
 @PythonCode=(); # array for generated code chunks
+@BufferValClass=@BufferValCom=@BufferValPerl=@BufferValPy=();
 #
 # Tokenize line into one string and three arrays @ValClass  @ValPerl  @ValPy
 #
 sub tokenize
 {
 my ($l,$m);
+
       $source=$_[0];
       $tno=0;
       @ValClass=@ValCom=@ValPerl=@ValPy=@ValType=(); # "Token Type", token comment, Perl value, Py analog (if exists)
@@ -325,22 +327,32 @@ my ($l,$m);
                if( exists($logical_op{$w}) ){
                   substr($source,0,length($w)) = $logical_op{$w};
                   $tno-=1;
-                  next; # rescan !!!
+                  next; # rescan !!! A very elegant solution.
                }
-               if( $class eq 'c' && $tno > 0 ){
-                  # postfix conditional statement, like next if( line eq ''); Aug 10, 2020 --NNB
-                   Pythonizer::getline('{',substr($_[0],0,length($_[0])-length($source)),'}'); # save head
-                   @ValClass=@ValCom=@ValPerl=@ValPy=();
-                   $tno=0;
-                   next;
-               }
-              if( $class eq 't'  ){
+               if( $class eq 'c' && $tno > 0 && $Pythonizer::PassNo ){
+                  # token buffer implemented Oct 08, 2020 --NNB
+                  # Note you can't use both getline buffer and token buffer, so you can't add '{' to the end of if statement
+                  # You need to jump thoou the hoops in Pythonizer to inject '{' and '}' into the stream
+                  pop(@ValClass);
+                  pop(@ValCom);
+                  pop(@ValPerl);
+                  pop(@ValPy);
+                  @BufferValClass=@ValClass;
+                  @BufferValCom=@ValCom;
+                  @BufferValPerl=@ValPerl;
+                  @BufferValPy=@ValPy;
+                  @ValClass=@ValCom=@ValPerl=@ValPy=();
+                  $tno=0;
+                  $ValClass[$tno]=$class;
+                  $ValPy[$tno]=$w;
+                  $ValPerl[$tno]=$w;
+                  $ValType[$tno]='P';
+               }elsif ( $class eq 't'  ){
                   if( $tno>0 && $w eq 'my' ){
                      $source=substr($source,2); # cut my in constucts like for(my $i=0...)
                      next;
                   }
-                  $ValPy[$tno]='';
-              }elsif( $class eq 'q' ){
+               }elsif( $class eq 'q' ){
                   # q can be tranlated into """", but qw actually is an expression
                   $delim=substr($source,length($w),1);
 
@@ -925,7 +937,7 @@ my  $outer_delim;
     }elsif(index($quote,"'")==-1){
       $outer_delim="'";
     }else{
-      $out_delim='"""';
+      $outer_delim='"""';
     }
    $result=( $::PyV==3 ) ? "f$outer_delim" : ''; #For python 3 we need special opening quote
    while( $k > -1  ){
@@ -1111,7 +1123,7 @@ my $i;
    for($i=0; $i<@_;$i++ ){
       if( scalar(@PythonCode) >256  ){
          logme('S',"Number of generated chunks for the line exceeded 256");
-         sleep 5;
+         sleep 1;
          if( $::debug > 0  ){
             $DB::single = 1;
          }
@@ -1120,4 +1132,81 @@ my $i;
    } #for
    ($::debug>4) && say 'Generated parcial line ',join('',@PythonCode);
 }
+sub append
+{
+   $TokenStr.=$_[0];
+   $ValClass[scalar(@ValClass)]=$_[0];
+   $ValPerl[scalar(@ValPerl)]=$_[1];
+   $ValPy[scalar(@ValPy)]=$_[2];
+   $ValType[scalar(@ValPy)]=( scalar(@_)>3 ) ? $_[3]:'';
+}
+sub replace
+{
+my $pos=shift;
+   if(  $pos>$#ValClass ){
+      abend('Replace position $pos is outside upper bound');
+   }
+   substr($TokenStr,$pos,1)=$ValClass[$pos]=$_[0];
+   $ValPerl[$pos]=$_[1];
+   $ValPy[$pos]=$_[2];
+   $ValType[$pos]='';
+}
+sub insert
+{
+my $pos=shift;
+   if(  $pos>$#ValClass ){
+      abend('Insert position $pos is outside upper bound');
+   }
+   substr($TokenStr,$pos,0)=$_[0];
+   splice(@ValClass,$pos,0,$_[0]);
+   splice(@ValPerl,$pos,0,$_[1]);
+   splice(@ValPy,$pos,0,$_[2]);
+   splice(@ValType,$pos,0,'');
+}
+sub destroy
+{
+($from,$howmany)=@_;
+   # defaults and special cases
+   if( $from == -1 ){
+      $from=$#ValClass
+   }
+   if( scalar(@_)==1 ){
+      $howmany=scalar(@ValClass)-$from; # is no length then up to the nd of arrays.
+   }
+    # sanity checks
+   if ($from>$#ValClass) {
+       logme('E',"Attempt to delete element  $from in set containing $#ValClass elements. Request ignored");
+       return;
+   }elsif($from+$howmany>$#ValClass){
+      logme('E',"Attempt to delete  $howmany from position $from exceeds the index of the last element $#ValClass. Request ignored");
+      return;
+   }
+    substr($TokenStr,$from,$howmany)='';
+    splice(@ValClass,$from,$howmany);
+    splice(@ValPerl,$from,$howmany);
+    splice(@ValPy,$from,$howmany);
+}
+sub autoincrement_fix
+#
+# absence of autoincrament and autodecrament operators is a problem... May be even a wart.
+#
+{
+my $wart_pos;
+    #postincement
+   if( length($TokenStr)>6 &&  substr($TokenStr,0,6) eq 's(s^)='){
+      logme('E','Increment of array index found on the left side of assignement and replaced by append function. This guess might be wrong');
+      destroy(2,4);
+      replace( 0,'f','f',$ValPy[0].'.append' );
+      replace(1,'(','(','(');
+      append(')',')',')');
+   }elsif(  ($wart_pos=index($TokenStr,'s^)')) >-1  && $ValPerl[$wart_pos+2] eq ']' ){
+       logme('E',"Posfix operation $ValPerl[$wart_pos+1] might be translated incorrectly. Please verify and/or translate manually ");
+       $ValPy[$wart_pos]='('.$ValPy[$wart_pos].':='.$ValPy[$wart_pos].'+1)';
+       $ValPy[$wart_pos+1]='';
+       #$ValClass[$wart_pos]='f';
+   }elsif(  ($wart_pos=index($TokenStr, '(^s')) >-1 && $ValPerl[$wart_pos] eq '[' ){
+       $ValPy[$wart_pos+2]='('.$ValPy[$wart_pos+2].':='.$ValPy[$wart_pos+2].'+1)';
+       $ValPy[$wart_pos+1]='';
+   }
+} # preprocessing
 1;

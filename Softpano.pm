@@ -212,7 +212,7 @@ my $message=$_[1];
 # Generate diagnostic message from error code, line number and message (optionally timestamp is suffix of error code is T)
 #
 my $prefix=defined($.) ? "LINE $." : '';
-      $message="$prefix [$filename-$lineno$error_code]:  $message";
+      $message="$prefix [$package-$lineno$error_code]:  $message";
       my $severity=index("WEST",uc($error_code));
       if( $severity == -1 ){
          # all unknown codes.
