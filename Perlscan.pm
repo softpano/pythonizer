@@ -120,7 +120,6 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                   'warn'=>'f', 'when'=>'C', 'while'=>'c',
                   'undef'=>'f', 'unless'=>'c', 'unshift'=>'f','until'=>'c','uc'=>'f', 'ucfirst'=>'f','use'=>'c',
                   );
-
 #
 # one to one translation of digramms. most are directly translatatble.
 #
@@ -330,21 +329,20 @@ my ($l,$m);
                   next; # rescan !!! A very elegant solution.
                }
                if( $class eq 'c' && $tno > 0 && $Pythonizer::PassNo ){
-                  # token buffer implemented Oct 08, 2020 --NNB
+                  # The current solution is pretty britle but works
+                  # You can't recreate Perl source from ValPerl as it does not have 100% correspondence.
+                  # So the token buffer implemented Oct 08, 2020 --NNB
                   # Note you can't use both getline buffer and token buffer, so you can't add '{' to the end of if statement
                   # You need to jump thoou the hoops in Pythonizer to inject '{' and '}' into the stream
-                  pop(@ValClass);
-                  pop(@ValCom);
-                  pop(@ValPerl);
-                  pop(@ValPy);
-                  @BufferValClass=@ValClass;
-                  @BufferValCom=@ValCom;
-                  @BufferValPerl=@ValPerl;
-                  @BufferValPy=@ValPy;
+                  pop(@ValClass); pop(@ValCom); pop(@ValPerl); pop(@ValPy);
+                  @BufferValClass=@ValClass; @BufferValCom=@ValCom; @BufferValPerl=@ValPerl; @BufferValPy=@ValPy;
                   @ValClass=@ValCom=@ValPerl=@ValPy=();
                   $tno=0;
                   $ValClass[$tno]=$class;
                   $ValPy[$tno]=$w;
+                  if( exists($keyword_tr{$w}) ){
+                     $ValPy[$tno]=$keyword_tr{$w};
+                  }
                   $ValPerl[$tno]=$w;
                   $ValType[$tno]='P';
                }elsif ( $class eq 't'  ){
@@ -358,6 +356,10 @@ my ($l,$m);
 
                   if( $w eq 'q' ){
                      $cut=single_quoted_literal($delim,2);
+                     if( $cut== -1 ){
+                        $pythonizer::TrStatus=-1;
+                        last;
+                     }
                      $ValPerl[$tno]=substr($source,length($w)+1,$cut-length($w)-2);
                      $w=escape_backslash($ValPerl[$tno]);
                      $ValPy[$tno]=escape_quotes($w,2);
@@ -887,6 +889,7 @@ sub single_quoted_literal
 my ($m,$sym);
 # The problem is decomposting single quotes string is that for brackets closing delimiter is different from opening
 # The second problem is that \n in single quoted string in Perl means two symbols and in Python a single symbol (newline)
+      return -1 if ($offset>length($source));
       if(index('{[(<',$closing_delim)>-1){
          $closing_delim=~tr/{[(</}])>/;
       }
@@ -1072,12 +1075,13 @@ my $line='';
       }
       ($line) && Pythonizer::output_line($line,' #FAILTRAN');
    }elsif( scalar(@PythonCode)>0 ){
+
       $line=$PythonCode[0];
       for( my $i=1; $i<@PythonCode; $i++  ){
          next unless(defined($PythonCode[$i]));
-         next if( $PythonCode[$i] eq '');
+         next if( $PythonCode[$i] eq '' );
          $s=substr($PythonCode[$i],0,1); # the first symbol
-         if( substr($line,-1,1)=~/[\w'"]/ &&  $s =~/[\w'"]/  ){
+         if( defined($line) && substr($line,-1,1)=~/[\w'"]/ &&  $s =~/[\w'"]/ ){
             # space between identifiers and before quotes
             $line.=' '.$PythonCode[$i];
          }else{

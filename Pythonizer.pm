@@ -150,13 +150,21 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
    $CurSubName='main';
    $LocalSub{'main'}=1;
    while(1){
-      $line=getline(); # get the first meaningful line, skipping commenets and  POD
-      last unless(defined($line));
-      if( $::debug==2 && $.== $::breakpoint ){
-         say STDERR "\n\n === Line $. Perl source: $line ===\n";
-         $DB::single = 1;
+      if( scalar(@Perlscan::BufferValClass)>0 ){
+         #procedd token buffer -- Oct 9, 2020 --NNB 
+         @ValClass=@Perlscan::BufferValClass;
+         $TokenStr=join('',@ValClass);
+         @ValPerl=@Perlscan::BufferValPerl;
+         @ValPy=@Perlscan::BufferValPy;
+      }else{
+         $line=getline(); # get the first meaningful line, skipping commenets and  POD
+         last unless(defined($line));
+         if( $::debug==2 && $.== $::breakpoint ){
+            say STDERR "\n\n === Line $. Perl source: $line ===\n";
+            $DB::single = 1;
+         }
+         Perlscan::tokenize($line);
       }
-      Perlscan::tokenize($line);
       unless(defined($ValClass[0])){
          next;
       }

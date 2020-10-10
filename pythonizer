@@ -80,7 +80,8 @@
 # 0.800  2020/10/02  BEZROUN   More correct translation of array assignments. Globals initialiazed after main sub.  Installer added
 # 0.810  2020/10/05  BEZROUN   Pre-pythonizer by default does not create main subroutine
 # 0.820  2020/10/06  BEZROUN   Function parsing rewritten to accomodate some "bracketless" cases which now became a norm in Perl
-# 0.830  2020/10/08  BEZROUN   Implementation of postfix conditional is completly reqritten and now uses token buffering
+# 0.830  2020/10/08  BEZROUN   Implementation of postfix conditional is completly rewritten and now uses token buffering
+# 0.840  2020/10/09  BEZROUN   state varibles now are prefixed with the name of sub to avoid conflict with globals
 #!start ===============================================================================================================================
 
    use v5.10.1;
@@ -99,7 +100,7 @@
 
    use Pythonizer qw(correct_nest getline prolog output_line @LocalSub %GlobalVar);
 
-   $VERSION='0.83';
+   $VERSION='0.84';
    $SCRIPT_NAME='pythonizer';
 #
 # options
@@ -125,7 +126,7 @@
    $LOG_DIR='/tmp/'.ucfirst($SCRIPT_NAME);
    banner($LOG_DIR,$SCRIPT_NAME,"Fuzzy translator of Python to Perl. Version $VERSION",30); # Opens SYSLOG and print STDERRs banner; parameter 4 is log retention period
    prolog(); # sets all options, including breakpoint
-   @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=();
+
    if( $debug > 0 ){
       autocommit("$HOME/Archive",$ENV{'PERL5LIB'},qw(Softpano.pm Perlscan.pm Pythonizer.pm));
    }
@@ -156,9 +157,11 @@
 #
 #Main loop
 #
-   @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=();
+   @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=(); # cleaning after the first pass
 my ($start,$token_buffer_active);
+   $CurSub='main';
    $token_buffer_active=0;
+   $we_are_in_sub_body=0;
    while( defined($line) || scalar(@Perlscan::BufferValClass)>0 ){
       $TrStatus=0;
       if( $debug>1 ){
@@ -170,9 +173,10 @@ my ($start,$token_buffer_active);
          }
       }
 #
-# You need to claw back tokens from buffer for postfix conditionals. This is pretty brittle code.
+# You need to claw back tokens from buffer for postfix conditionals. This is a pretty brittle and complex code -- Oct 8,2020 NNB
 #
-      if( scalar(@Perlscan::BufferValClass)>0 ){
+      if ( scalar(@Perlscan::BufferValClass)==0 ) { tokenize($line);   # I just like to see tokenize call first in debugger  :-)
+      }else{
          if($token_buffer_active==0){
             @ValClass=@ValPerl=('{');
             $token_buffer_active=1;
@@ -188,20 +192,18 @@ my ($start,$token_buffer_active);
             @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=();
             $token_buffer_active=0;
          }
-
-      }else{
-         tokenize($line);
       }
       if( scalar(@ValClass)==0 || ! defined($ValClass[0]) ){
-          $line=getline(); # skip broken
+          $line=getline(); # skip lines with no tokens like ';'
           next;
       }
       #
-      # Selected cases of postfix and prefix operator can be translated; other not
+      # Dealing with problem of state varaible mapping into Python via renaming
       #
-
+      rename_state_var(0,$#ValPy);
       if( index($TokenStr,'s^')>-1){
-         autoincrement_fix() # exported function in Pythonizer
+         # Selected cases of postfix and prefix operator can be translated; other not
+         autoincrement_fix() # exported function located in Perlscan
       }
       #
       # Statements
@@ -210,6 +212,13 @@ my ($start,$token_buffer_active);
       if( $ValClass[0] eq '}' ){
          # we treat curvy bracket as a separate dummy statement
          correct_nest(-1); # next line will be de-indented
+         if( $we_are_in_sub_body  && $Pythonizer::NextNest ==0  ){
+            correct_nest(0,0);
+            initialize_globals_for_state_vars();
+            %new_state_var_name=(); # hash for own and state variables
+            %new_state_var_init=();
+            $CurSub='main';
+         }
       }elsif( $ValClass[0] eq '{' ){
          correct_nest(1); # next line will be indented
       }elsif( $ValClass[0] eq '(' ){
@@ -224,8 +233,12 @@ my ($start,$token_buffer_active);
          $line=getline();
          next;
       }elsif( $ValPerl[0] eq 'sub' ){
+         $we_are_in_sub_body=1;
+         %new_state_var_name=(); # hash for own and state variables
+         %new_state_var_init=();
          # Perl has two types of sub statements -- prototype and actual
          $CurSub=$ValPy[1];
+
          correct_nest(0,0);
          gen_chunk('def',$CurSub,'(perl_arg_array):'); # def name ([list of arguments])
          $LocalSub{$CurSub}=1;
@@ -237,7 +250,7 @@ my ($start,$token_buffer_active);
          }
       }elsif( $ValPerl[0] eq 'BEGIN' ){
          correct_nest(0,0);
-         gen_chunk($ValPy[0].' perl_begin:'); # def
+         gen_chunk($ValPy[0],'perl_begin:'); # def
       }elsif(  $ValPerl[0] eq 'close' ){
          for( my $i=1; $i<@ValPy; $i++ ){
              if( $ValClass[$i] eq 'i' ){
@@ -257,13 +270,28 @@ my ($start,$token_buffer_active);
           $TrStatus=assignment(0);
       }elsif( $ValClass[0] eq 't' ){
          if( scalar(@ValClass)==2 ){
-            #simple case like my $line
+            #uninitalise single var declaration like my $line
             if( $ValPerl[0] eq 'my' ){
-               #my $k;
                output_line("$ValPy[1]=None");
-            }elsif( $ValPerl[0] eq 'state' || $ValPerl[0] eq 'own' ){
-               # $i++;
-               gen_chunk($ValPy[0],$ValPy[1]);
+            }elsif( $ValPerl[0] eq  'own' ){
+               gen_chunk( $ValPy[0], $ValPy[1] );
+            }elsif( $ValPerl[0] eq 'state' ){
+               $new_name=$CurSub.'_'.$ValPy[1];
+               $new_state_var_name{$ValPy[1]}=$new_name;
+               gen_chunk($ValPy[0],$new_name);
+            }
+            finish();
+            next;
+         }elsif( scalar(@ValClass)==4 && $ValClass[2] eq '='  ){
+            if( $ValPerl[0] eq 'my' ){
+               output_line("$ValPy[1]=$ValPy[-1]");
+            }elsif( $ValPerl[0] eq  'own' ){
+               gen_chunk( $ValPy[0], $ValPy[1].'=',$ValPy[-1] );
+            }elsif(  $ValPerl[0] eq 'state' ){
+               $new_name=$CurSub.'_'.$ValPy[1];
+               $new_state_var_name{$ValPy[1]}=$new_name;
+               gen_chunk($ValPy[0],$new_name);
+               $new_state_var_init{$ValPy[1]}=$ValPy[-1];
             }
             finish();
             next;
@@ -271,13 +299,20 @@ my ($start,$token_buffer_active);
             #this is a more complex case
             $last=matching_br(1);
             if($#ValClass>$last && $ValClass[$last+1] eq '='){
+               if($ValPerl[0] eq 'state' ){
+                  rename_state_var(2,$last-1);
+               }
                $TrStatus=assignment(1);
             }else{
                for($i=2; $i<$last;$i++){
                   if ($ValPy[$i] eq ','){
                      gen_chunk('=');
+                  }elsif($ValPerl[0] eq 'state'){
+                     $new_name=$CurSub.'_'.$ValPy[$i];
+                     $new_state_var_name{$ValPy[$i]}=$new_name;
+                     gen_chunk($new_name);
                   }else{
-                     gen_chunk($ValPy[$i]);
+                      gen_chunk($ValPy[$i]);
                   }
                }
                gen_chunk('=None');
@@ -361,7 +396,7 @@ my ($start,$token_buffer_active);
       }elsif( $ValClass[0] eq 'c' ){
           #normal control statement: if/while/for, etc -- next line is always nested.
           # in foreach loop "(" is absent ) do in perl you can's distibush between postfix fro and foreach loop without parens
-          if( defined($ValType[0]) && $ValType[0] eq 'P' && $ValClass[1] ne '(' && $ValPerl[0] ne 'for' ){
+          if( defined($ValType[0]) && $ValType[0] eq 'P' && $ValClass[1] ne '(' && $ValPy[0] ne 'for' ){
               insert(1,'(','(','(');
               append(')',')',')');
           }
@@ -512,6 +547,8 @@ my ($start,$token_buffer_active);
       }
       finish();
     } # while
+
+    initialize_globals_for_state_vars();
 #
 # Epilog -- close  output file and  if you are in debugging mode display the content  on the screen
 #
@@ -533,8 +570,40 @@ sub finish
     correct_nest();
 } # finish
 
-
-
+sub rename_state_var
+{
+($from,$to)=@_;
+   for( $i=$from; $i<=$to; $i++ ){
+      if( defined($ValClass[$i]) &&  $ValClass[$i]=~/[sah]/ && exists($new_state_var_name{$ValPy[$i]}) ){
+          $ValPy[$i]=$CurSub.'_'.$ValPy[$i];
+      }
+   }
+}
+sub initialize_globals_for_state_vars
+{
+my  @renamed_state_var=values(%new_state_var_name);
+   return unless( defined($renamed_state_var[0]) ); # nothing to do
+   # First generate varibles for which we have inialization
+   for($i=1;$i<@renamed_state_var;$i++){
+      if( exists($new_state_var_init{$renamed_state_var[$i]}) ){
+         gen_statement($renamed_state_var[$i].'='.$new_state_var_init{$renamed_state_var[$i]});
+      }
+   }
+   # Now initialize the rest to None
+my $first=0;
+   for( $i=1; $i<@renamed_state_var; $i++){
+      unless( exists($new_state_var_init{$renamed_state_var[$i]}) ){
+         if( $first==0 ){
+            gen_chunk($renamed_state_var[$i]);
+            $first++;
+         }else{
+            gen_chunk('=',$renamed_state_var[$i]);
+         }
+      }
+   }
+   ($first) && gen_chunk('=None');
+   gen_statement;
+}
 sub print2
 #
 # Print statement for Python2
@@ -890,7 +959,7 @@ my ($hashpos,$end_pos,$end_br_pos,$k,$increment,$tempvar);
           return($#ValClass);
       }
       if( $PyV==2 && $TokenStr=~/(^.*)\(s.*?=/ ){
-         # assignment inside control statement is prohibited in Python (in 3.8 walrus operator fixes that )
+         # assignment inside control statement is prohibited in Python 2.7 (in 3.8 walrus operator fixes that )
          pre_assign(length($1));
          $limit=matching_br($start+1); # TokenStr changed because assigment was factored out
       } # if
@@ -1072,12 +1141,12 @@ my ($bracketed, $end_pos, $k, $split, $split2, $delta, $dict, $incr, $arg1, $arg
                # positive
                gen_chunk("$ValPy[$start]\[$arg1\]"); # single symbol
             }elsif( $arg1<0 && -$arg1>=$arg2 ){
-                gen_chunk("$ValPy[$start+2]\[$arg1:\]"); # last symbol
+                gen_chunk("$ValPy[$start]\[$arg1:\]"); # last symbol
             }elsif( $arg2>0 ){
                 $arg2+=$arg1;
-                gen_chunk("$ValPy[$start+2]\[$arg1:$arg2\]"); # positive length added to the first index
+                gen_chunk("$ValPy[$start]\[$arg1:$arg2\]"); # positive length added to the first index
             }elsif($arg2<0) {
-                gen_chunk("$ValPy[$start+2]\[$arg1:$arg2\]"); # negative value is not length but the position from the last
+                gen_chunk("$ValPy[$start]\[$arg1:$arg2\]"); # negative value is not length but the position from the last
             }else{
                 $TrStatus=-1;  return -255;
             }
@@ -1299,8 +1368,10 @@ my ($bracketed, $end_pos, $k, $split, $split2, $delta, $dict, $incr, $arg1, $arg
          # if no argument then it uses @_ array
          if( $bracketed || $limit-$start==1 ){
             gen_chunk($ValPy[$start],$py_name);
+         }elsif( $bracketed==0 || $limit==$start ){
+            gen_chunk($ValPy[$start],$py_name);
          }else{
-            logme('W','ATTENTION: Bracketless shift function with argument is not supported, unless it is a single statement. No arguments assumed');
+            #logme('W','ATTENTION: Bracketless shift function with argument is not supported, unless it is a single statement. No arguments assumed');
             gen_chunk("perl_arg_array$py_name");
          }
          return $start+1;
