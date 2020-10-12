@@ -68,11 +68,10 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
    %SPECIAL_VAR=('O'=>'os.name','T'=>'OS_BASETIME', 'V'=>'sys.version[0]', 'X'=>'sys.executable()',
                  ';'=>'PERL_SUBSCRIPT_SEPARATOR','>'=>'UNIX_EUID','<'=>'UNIX_UID','('=>'os.getgid()',')'=>'os.getegid()',
-                 '?'=>'subprocess_rc',);
-
-   %logical_op=('and'=>'&&','or'=>'||','not'=>'!');
+                '?'=>'subprocess_rc','!'=>'unix_diag_message');
 
    %keyword_tr=('eq'=>'==','ne'=>'!=','lt'=>'<','gt'=>'>','le'=>'<=','ge'=>'>=',
+                'and'=>'and','or'=>'or','not'=>'not',
                 'x'=>' * ',
                 'bless'=>'NoTrans!','BEGIN'=>'def begin():',
                 'caller'=>'unknown','chdir'=>'.os.chdir','chmod'=>'.os.chmod','chomp'=>'.rstrip("\n")','chop'=>'[0:-1]','chr'=>'chr','close'=>'.f.close',
@@ -86,19 +85,20 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                 'last'=>'break ', 'local'=>'', 'lc'=>'.lower()', 'length'=>'len', 'localtime'=>'.localtime',
                 'map'=>'map', 'mkdir'=>'os.mkdir', 'my'=>'',
                 'next'=>'continue ', 'no'=>'NoTrans!',
-                'own'=>'global', 'oct'=>'eval', 'ord'=>'ord',
+                'own'=>'global', 'oct'=>'oct', 'ord'=>'ord',
                 'package'=>'NoTrans!', 'pop'=>'.pop()', 'push'=>'.extend(',
                 'say'=>'print','scalar'=>'len', 'shift'=>'.pop(0)', 'split'=>'re.split', 'sort'=>'sort', 'state'=>'global',
                    'substr'=>'','sub'=>'def','STDERR'=>'sys.stderr','SYSIN'=>'sys.stdin','system'=>'os.system','sprintf'=>'',
                    'STDERR'=>'sys.stderr','STDIN'=>'sys.stdin', '__LINE__' =>'sys._getframe().f_lineno',
                 'rindex'=>'.rfind', 'require'=>'NoTrans!', 'ref'=>'type', 'rmdir'=>'os.rmdir',
+                'tie'=>'NoTrans!',
                 'uc'=>'.upper()', 'ucfirst'=>'.capitalize()', 'undef'=>'Null', 'unless'=>'if not ', 'unlink'=>'os.unlink',
-                   'unshift'=>'insert(0,', 'use'=>'NoTrans!', 'until'=>'while not ',
+                   'unshift'=>'insert(0,', 'use'=>'NoTrans!', 'until'=>'while not ','untie'=>'NoTrans!',
                  'warn'=>'print',
                );
 
        %TokenType=('eq'=>'>','ne'=>'>','lt'=>'>','gt'=>'>','le'=>'>','ge'=>'>',
-                   'x'=>'*',
+                  'x'=>'*',
                   'y'=>'q', 'q'=>'q','qq'=>'q','qr'=>'q','wq'=>'q','wr'=>'q','qx'=>'q','m'=>'q','s'=>'q','tr'=>'q',
                   'and'=>'0',
                   'caller'=>'f','chdir'=>'f','chomp'=>'f', 'chop'=>'f', 'chmod'=>'f','chr'=>'f','close'=>'f',
@@ -111,14 +111,15 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                   'keys'=>'f',
                   'last'=>'C', 'lc'=>'f', 'length'=>'f', 'local'=>'t', 'localtime'=>'f',
                   'my'=>'t', 'map'=>'f', 'mkdir'=>'f',
-                  'next'=>'C',
+                  'next'=>'C','not'=>'!',
                   'or'=>'0', 'own'=>'t', 'oct'=>'f', 'ord'=>'f', 'open'=>'f',
                   'push'=>'f', 'pop'=>'f', 'print'=>'f', 'package'=>'c',
                   'rindex'=>'f','read'=>'f', 'return'=>'C', 'ref'=>'f',
                   'say'=>'f','scalar'=>'f','shift'=>'f', 'split'=>'f', 'sprintf'=>'f', 'sort'=>'f','system'=>'f', 'state'=>'t', 'sub'=>'k','substr'=>'f',
+                  'tie'=>'f',
                   'values'=>'f',
                   'warn'=>'f', 'when'=>'C', 'while'=>'c',
-                  'undef'=>'f', 'unless'=>'c', 'unshift'=>'f','until'=>'c','uc'=>'f', 'ucfirst'=>'f','use'=>'c',
+                  'undef'=>'f', 'unless'=>'c', 'unshift'=>'f','until'=>'c','uc'=>'f', 'ucfirst'=>'f','use'=>'c','untie'=>'f',
                   );
 #
 # one to one translation of digramms. most are directly translatatble.
@@ -323,11 +324,6 @@ my ($l,$m);
             if( exists($TokenType{$w}) ){
                $class=$TokenType{$w};
                $ValClass[$tno]=$class;
-               if( exists($logical_op{$w}) ){
-                  substr($source,0,length($w)) = $logical_op{$w};
-                  $tno-=1;
-                  next; # rescan !!! A very elegant solution.
-               }
                if( $class eq 'c' && $tno > 0 && $Pythonizer::PassNo ){
                   # The current solution is pretty britle but works
                   # You can't recreate Perl source from ValPerl as it does not have 100% correspondence.
@@ -695,7 +691,7 @@ my $rc=-1;
             $ValPy[$tno]='perl_special_var_'.$s3;
          }
        }
-   }elsif( index(';<>()?',$s2) > -1  ){
+   }elsif( index(';<>()?!',$s2) > -1  ){
       $ValPy[$tno]=$SPECIAL_VAR{$s2};
       $cut=2;
       $ValType[$tno]="X";
@@ -719,9 +715,9 @@ my $rc=-1;
       if( $update ){
          $ValPerl[$tno]=$1;
       }
-      $ValPy[$tno]='len('.$1.')-1';
+      $ValPy[$tno]='(len('.$1.')-1)';
       $cut=length($1)+2;
-   }elsif( $source=~/^.(\w*(\:\:\w+)*)/ ){
+  }elsif( $source=~/^.(\w*(\:\:\w+)*)/ ){
       $cut=length($1)+1;
       $name=$1;
       $ValPy[$tno]=$name;
@@ -959,7 +955,7 @@ my  $outer_delim;
       $quote=substr($quote,$k);
       decode_scalar($quote,0); #get's us scalar or system var
       #does not matter what type of veriable this is: regular or special variable
-      $result.=$ValPy[$tno]; # copy string determined by decode_scalar. It might changed if Perl contained :: like in $::PyV
+      $result.=$ValPy[$tno]; # copy string provided by decode_scalar. ValPy[$tno] changes if Perl contained :: like in $::PyV
       $quote=substr($quote,$cut); # cure the nesserary number of symbol determined by decode_scalar.
       if( $quote=~/^\s*([\[\{].+?[\]\}])/  ){
          #HACK element of the array of hash. Here we cut corners and do not process expressions as index.
