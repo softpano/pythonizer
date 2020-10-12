@@ -42,6 +42,7 @@ package Perlscan;
 # 0.83 2020/09/02  BEZROUN   if regex contains both single and double quotes use """. Same for tranlation of double quoted
 # 0.90 2020/09/17  BEZROUN   Adapted for detection of global identifiers.
 # 0.91 2020/09/18  BEZROUN   ValType array added and now used in pass 0: values set to 'X' for special variables
+# 0.92 2020/10/12  BEZROUN   Better special var handling. Many bug fixes
 #==start=============================================================================================
 use v5.10.1;
 use warnings;
@@ -66,9 +67,12 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 # List of Perl special variables
 #
 
-   %SPECIAL_VAR=('O'=>'os.name','T'=>'OS_BASETIME', 'V'=>'sys.version[0]', 'X'=>'sys.executable()',
-                 ';'=>'PERL_SUBSCRIPT_SEPARATOR','>'=>'UNIX_EUID','<'=>'UNIX_UID','('=>'os.getgid()',')'=>'os.getegid()',
-                '?'=>'subprocess_rc','!'=>'unix_diag_message');
+   %SPECIAL_VAR=(';'=>'PERL_SUBSCRIPT_SEPARATOR','>'=>'UNIX_EUID','<'=>'UNIX_UID','('=>'os.getgid()',')'=>'os.getegid()',
+                '?'=>'subprocess_rc','!'=>'unix_diag_message','$'=>'process_number',';'=>'subscript_separator,',
+                ']'=>'perl_version','&'=>'last_successful_match','`'=>'string_preceeeding_last_match',"'"=>'post_last_match_string',
+                '+'=>'last_capture_group','/'=>'lines_separator',','=>'output_field_separator','\\'=>'unknown_perl_special_var',
+                );
+   %SPECIAL_VAR2=('O'=>'os.name','T'=>'OS_BASETIME', 'V'=>'sys.version[0]', 'X'=>'sys.executable()',); # $^O and friends
 
    %keyword_tr=('eq'=>'==','ne'=>'!=','lt'=>'<','gt'=>'>','le'=>'<=','ge'=>'>=',
                 'and'=>'and','or'=>'or','not'=>'not',
@@ -88,6 +92,7 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                 'own'=>'global', 'oct'=>'oct', 'ord'=>'ord',
                 'package'=>'NoTrans!', 'pop'=>'.pop()', 'push'=>'.extend(',
                 'say'=>'print','scalar'=>'len', 'shift'=>'.pop(0)', 'split'=>'re.split', 'sort'=>'sort', 'state'=>'global',
+                   'stat'=>'os.stat',
                    'substr'=>'','sub'=>'def','STDERR'=>'sys.stderr','SYSIN'=>'sys.stdin','system'=>'os.system','sprintf'=>'',
                    'STDERR'=>'sys.stderr','STDIN'=>'sys.stdin', '__LINE__' =>'sys._getframe().f_lineno',
                 'rindex'=>'.rfind', 'require'=>'NoTrans!', 'ref'=>'type', 'rmdir'=>'os.rmdir',
@@ -115,7 +120,8 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                   'or'=>'0', 'own'=>'t', 'oct'=>'f', 'ord'=>'f', 'open'=>'f',
                   'push'=>'f', 'pop'=>'f', 'print'=>'f', 'package'=>'c',
                   'rindex'=>'f','read'=>'f', 'return'=>'C', 'ref'=>'f',
-                  'say'=>'f','scalar'=>'f','shift'=>'f', 'split'=>'f', 'sprintf'=>'f', 'sort'=>'f','system'=>'f', 'state'=>'t', 'sub'=>'k','substr'=>'f',
+                  'say'=>'f','scalar'=>'f','shift'=>'f', 'split'=>'f', 'sprintf'=>'f', 'sort'=>'f','system'=>'f', 'state'=>'t',
+                  'stat'=>'t','sub'=>'k','substr'=>'f',
                   'tie'=>'f',
                   'values'=>'f',
                   'warn'=>'f', 'when'=>'C', 'while'=>'c',
@@ -645,6 +651,7 @@ my ($l,$m);
 #
 sub finish
 {
+my $original;
    if( $cut>length($source)){
       logme('S',"The value of cut ($cut) exceeded the length (".length($source).") of the string: $source ");
       $source='';
@@ -653,7 +660,14 @@ sub finish
    }
    if( length($source)==0  ){
        # the current line ended but ; or ){ } were not reached
+       $original=$Pythonizer::IntactLine;
        $source=Pythonizer::getline();
+       if( length(Pythonizer::IntactLine)>0 ){
+          $original.="\n".$Pythonizer::IntactLine;
+          $Pythonizer::IntactLine=$original;
+       }else{
+         $Pythonizer::IntactLine=$original;
+       }
    }
    if( $::debug > 3  ){
      say STDERR "Lexem $tno Current token='$ValClass[$tno]' value='$ValPy[$tno]'", " Tokenstr |",join('',@ValClass),"| translated: ",join(' ',@ValPy);
@@ -685,13 +699,13 @@ my $rc=-1;
        $cut=3;
        $ValType[$tno]="X";
        if( $s3=~/\w/  ){
-          if( exists($SPECIAL_VAR{$s3}) ){
-            $ValPy[$tno]=$SPECIAL_VAR{$s3};
+          if( exists($SPECIAL_VAR2{$s3}) ){
+            $ValPy[$tno]=$SPECIAL_VAR2{$s3};
           }else{
-            $ValPy[$tno]='perl_special_var_'.$s3;
+            $ValPy[$tno]='unknown_perl_special_var'.$s3;
          }
        }
-   }elsif( index(';<>()?!',$s2) > -1  ){
+   }elsif( index(q(!?<>()!;]&`'+),$s2) > -1  ){
       $ValPy[$tno]=$SPECIAL_VAR{$s2};
       $cut=2;
       $ValType[$tno]="X";

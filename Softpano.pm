@@ -104,9 +104,10 @@ my ($package, $filename, $lineno) = caller;
          $message="$::SCRIPT_NAME-$lineno"."T $_[0]. Exiting ";
       }
 #  Syslog might not be availble
-      out($message);
+      say STDERR $message;
+      say STDERR  "\nABNORMAL COMPLETION\n\n\n";
       #:banner('ABEND');
-      die('Internal error');
+      exit(-255);
 
 } # abend
 
@@ -151,11 +152,12 @@ my $logstamp=`date +"%y%m%d_%H%M"`; chomp $logstamp;
    $logfile="$my_log_dir/$script_name.$logstamp.log";
    open(SYSLOG, ">$logfile") || die("Fatal error: unable to open $logfile\n\n");
 my $timestamp=`date "+%y/%m/%d %H:%M"`; chomp $timestamp;
-   out("\n\n".uc($script_name).": $title (mtime $script_mod_stamp) Started at $timestamp\nLogs are at $logfile. Type -h for help.");
+   $title="\n\n".uc($script_name).": $title (mtime $script_mod_stamp) Started at $timestamp\nLogs are at $logfile. Type -h for help.";
+   out($title);
    for( my $i=4; $i<@_; $i++) {
       out($_[$i]); # optional subtitles
    }
-   out("=" x 121);
+   out("=" x length($title));
 } #banner
 
 

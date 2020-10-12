@@ -41,12 +41,13 @@ our  ($IntactLine, $output_file, $NextNest,$CurNest, $line);
    $InLineNo=0; # counter, pointing to the current like in InputTextA during the first pass
    %LocalSub=(); # list of local subs
    %GlobalVar=(); # generated "external" declaration with the list of global variables.
+   $maxlinelen=188;
 #
 #::prolog --  Decode parameter for the pythonizer. all parameters are exported
 #
 sub prolog
 {
-      getopts("hd:v:r:p:b:t:",\%options);
+      getopts("hd:v:r:p:b:t:l:",\%options);
 #
 # Three standard otpiotn -h, -v and -d
 #
@@ -103,6 +104,18 @@ sub prolog
             exit 255;
          }
       }
+      if( exists $options{'l'} ){
+         if($options{'l'}>180 && $options{'l'}>256  ){
+            $maxlinelen=$options{'l'};
+            if( $maxlinelen//2==1 ){
+               $maxlinelen-=1;
+            }
+         }else{
+            logme('S',"Incorrect value for maxlinelen: $options{'l'} Minimum width of protocol screen is 180. Max 256 Default value 188 is assumned \n");
+            exit 255;
+         }
+      }
+#
 #
 # Application arguments
 #
@@ -118,7 +131,15 @@ sub prolog
              out("Option -r (refactor) was specified. file refactored using $refactor as the fist pass over the source code");
             `pre_pythonizer -v 0 $fname`;
          }
-         open (STDIN, '<',$fname) || die("Can't open $fname for reading");
+         `cp -p $fname $fname.bak && tr -d "\r" < $fname.bak > $fname`; # just in case
+         $fsize=-s $fname;
+         if ($fsize<10){
+            abend("The size of the file is $fsize. Nothing to do. Exiting");
+         }
+         unless( -r $fname ){
+            abend("File does not have read permissions for the user");
+         }
+          open (STDIN, '<',$fname) || die("Can't open $fname for reading $!");
       }else{
           abend("Input file should be supplied as the first argument");
       }
@@ -151,7 +172,7 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
    $LocalSub{'main'}=1;
    while(1){
       if( scalar(@Perlscan::BufferValClass)>0 ){
-         #procedd token buffer -- Oct 9, 2020 --NNB 
+         #procedd token buffer -- Oct 9, 2020 --NNB
          @ValClass=@Perlscan::BufferValClass;
          $TokenStr=join('',@ValClass);
          @ValPerl=@Perlscan::BufferValPerl;
@@ -293,7 +314,9 @@ state @buffer; # buffer to "postponed lines. Used for translation of postfix con
       }
       $line =~ s/\s+$//; # trim tailing blanks
       $line =~ s/^\s+//; # trim leading blanks
-      if ($line ne '{' &&  $line ne '}' ){
+      if ($line eq '{' || $line eq '}') {
+          $IntactLine='';
+      }else{
          $IntactLine=$line;
       }
       return  $line;
@@ -310,12 +333,15 @@ return if ($PassNo==0); # no output during the first pass
 my $line=(scalar(@_)==0 ) ? $IntactLine : $_[0];
 my $tailcomment=(scalar(@_)==2 ) ? $_[1] : '';
 my $indent=' ' x $::TabSize x $CurNest;
-my $flag=( $::TrStatus < 0 ) ? 'FAIL' : '    ';
+my $flag=( $::TrStatus < 0 ) ? 'F' : ' ';
 my $len=length($line);
-my $maxline=80;
-my $prefix=sprintf('%4u',$.)." | $CurNest | $flag |";
-my $com_zone=$maxline+length($prefix);
+my $prefix=sprintf('%4u',$.)." |".sprintf('%2u',$CurNest)." | ".sprintf('%1s',$flag)." |";
+my $zone_size=($maxlinelen-length($prefix))/2; # length of prefix is 20
+my $start_of_comment_zone=$zone_size+length($prefix); #  the start of comment_zone is 20+80=100.
+#                                                   So the total line length=180
 my $orig_tail_len=length($tailcomment);
+my $i;
+
 
    if(  $tailcomment){
        $tailcomment=($tailcomment=~/^\s+(.*)$/ ) ? $indent.$1 : $indent.$tailcomment;
@@ -336,46 +362,70 @@ my $orig_tail_len=length($tailcomment);
    }
    say SYSOUT $line;
    $line=$prefix.$line;
-   $len=length($line);
-   if(  scalar(@_)==1){
+   $len=length($line); # new length woth prefix containing line no and nesting
+my (@lineblock,$filler);
+   if( scalar(@_)==1){
       # no tailcomment
       if(  $IntactLine=~/^\s+(.*)$/ ){
          $IntactLine=$1;
       }
-      #remove tailcomment from original line
-      if(  $len > $maxline ){
+      if(  $len > $start_of_comment_zone ){
          # long line
-         if(  length($IntactLine) > $maxline ){
+         if(  length($IntactLine) > $zone_size ){
             out($line);
-            out((' ' x $com_zone),' #PL: ',substr($IntactLine,0,$maxline));
-            out((' ' x $com_zone),' Cont:  ',substr($IntactLine,$maxline));
+            if (index($IntactLine,"\n")==-1){
+                print_intactline($IntactLine,$zone_size,$start_of_comment_zone);
+            }else{
+               @lineblock=split("\n",$IntactLine);
+               print_intactline($lineblock[0],$zone_size,$start_of_comment_zone);
+               for(my $i=1; $i<@lineblock;$i++){
+                  print_intactline($lineblock[$i],$zone_size,$start_of_comment_zone);
+               }
+            }
          }else{
             out($line,' #PL: ',$IntactLine);
          }
      }else{
-         # short line
-         out($line,(' ' x ($com_zone-$len)),' #PL: ',$IntactLine);
+         # short line without tail comment
+         $filler=' ' x ($start_of_comment_zone-$len);
+          if (index($IntactLine,"\n")==-1){
+              out($line,$filler,' #PL: ',$IntactLine);
+          }else{
+             @lineblock=split("\n",$IntactLine);
+             out($line,$filler,' #PL: ',$lineblock[0]); # its short so this is OK
+             for( $i=1; $i<@lineblock;$i++){
+                print_intactline($lineblock[$i],$zone_size,$start_of_comment_zone);
+             }
+          }
       }
    }else{
      #line with tail comment
-     $IntactLine=substr($IntactLine,0,-$orig_tail_len);
-     if(  $tailcomment eq '#\\' ){
-         out($line,' \ '); # continuation line
-      }else{
-         out($line,' ',$tailcomment); # output with tail comment instead of Perl comment
-      }
-      if(  length($IntactLine)>90 ){
-         #long line
-         out((' ' x $com_zone),' #PL: ',substr($IntactLine,0,$maxline));
-         out((' ' x $com_zone),' #Cont: ',substr($IntactLine,$maxline));
-      }else{
-         #short line
-         out((' ' x $com_zone),' #PL: ',$IntactLine);
-      }
+     $i=index($tailcomment,"\n");
+     if($i==-1) {
+        out($line,' ',$tailcomment); # output with the original comment instead of Perl source
+        print_intactline(substr($IntactLine,0,-$orig_tail_len),$zone_size,$start_of_comment_zone); # print Perl source
+     }else{
+        @lineblock=split("\n",$IntactLine);
+        out($line,' ',$tailcomment); # output with tail comment instead of Perl comment
+        print_intactline(substr($lineblock[0],0,-$orig_tail_len),$zone_size,$start_of_comment_zone);
+        for( $i=1; $i<@lineblock;$i++){
+            print_intactline($lineblock[$i],$zone_size,$start_of_comment_zone);
+        }
+     }
    }
 
 } # output_line
-
+sub print_intactline
+{
+my ($IntactLine,$zone_size,$start_of_comment_zone)=@_;
+my $filling=' ' x $start_of_comment_zone;
+   if(  length($IntactLine) > $zone_size ){
+      out( $filling,' #PL: ',substr($IntactLine,0,$zone_size));
+      out( $filling,' #+ : ',substr($IntactLine,$zone_size));
+   }else{
+      out($filling,' #PL: ',$IntactLine);
+   }
+}
 
 sub correct_nest
 # Ensure proper indenting of the lines. Accepts two arguments

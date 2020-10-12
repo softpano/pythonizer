@@ -82,6 +82,7 @@
 # 0.820  2020/10/06  BEZROUN   Function parsing rewritten to accomodate some "bracketless" cases which now became a norm in Perl
 # 0.830  2020/10/08  BEZROUN   Implementation of postfix conditional is completly rewritten and now uses token buffering
 # 0.840  2020/10/09  BEZROUN   state varibles now are prefixed with the name of sub to avoid conflict with globals
+# 0.850  2020/10/12  BEZROUN   print translation improved; many fixes in lex analyser
 #!start ===============================================================================================================================
 
    use v5.10.1;
@@ -100,7 +101,7 @@
 
    use Pythonizer qw(correct_nest getline prolog output_line @LocalSub %GlobalVar);
 
-   $VERSION='0.84';
+   $VERSION='0.85';
    $SCRIPT_NAME='pythonizer';
 #
 # options
@@ -135,7 +136,7 @@
 # Skip initial block of comments
 #
    $TrStatus=0;
-   $line=<>; # we need to discard the first line with /usr/binperl as interpreter
+   chomp($line=<>); # we need to discard the first line with /usr/binperl as interpreter
    if ($PyV==3) {
       output_line('','#!/usr/bin/python3 -u'); # put a proper line
    }else{
@@ -144,7 +145,8 @@
    if ($line =~ /^\s*#!/){
       $line=getline(); # skip previous interpreter definition and get the first meaningful line + initial block of comments, if present
    }else{
-      ($line)=split(' ',$line,1); # Perl idiom for removing leading blanks
+      getline($line); # put the first line in the readline buffer
+      $line=getline(); # rescan it
    }
    foreach $l ('import sys,os,re','import fileinput,subprocess'){
        output_line('',$l); # to block reproducing the first source line
@@ -164,6 +166,10 @@ my ($start,$token_buffer_active);
    $we_are_in_sub_body=0;
    while( defined($line) || scalar(@Perlscan::BufferValClass)>0 ){
       $TrStatus=0;
+      if( scalar(@ValClass)==0 || ! defined($ValClass[0]) ){
+          $line=getline(); # skip lines with no tokens like ';'
+          next;
+      }
       if( $debug>1 ){
          say STDERR "\n\n === Line $. Perl source:".(defined($line)?$line:$ValPerl[0])."===\n";
          if( $.>=$breakpoint ){
@@ -193,10 +199,7 @@ my ($start,$token_buffer_active);
             $token_buffer_active=0;
          }
       }
-      if( scalar(@ValClass)==0 || ! defined($ValClass[0]) ){
-          $line=getline(); # skip lines with no tokens like ';'
-          next;
-      }
+
       #
       # Dealing with problem of state varaible mapping into Python via renaming
       #
@@ -518,8 +521,12 @@ my ($start,$token_buffer_active);
          # user defined functon
          if( $ValClass[1] eq '(' ){
             $right_br=matching_br(1);
+         }else{
+            $right_br=$#ValClass;
+         }
+         if( $right_br eq $#ValClass ){
             if( $ValClass[2] eq ')' ){
-               # function with sero argumants
+               # function with zero arguments
                if( $ValPy[0] eq 'main' && $Pythonizer::CurNest==0 ){
                    my $globals=substr($GlobalVar{$CurSub},length('global'));
                    $globals=~tr/,/=/;
@@ -540,7 +547,7 @@ my ($start,$token_buffer_active);
                gen_chunk('])');
             }
          }else{
-           $TrStatus=-1;
+           $TrStatus=expression(0,$#ValClass); # this will scan till ')'
          }
       }else{
          $TrStatus=-1;
@@ -640,12 +647,8 @@ my $start=$_[0];
 my ($k,$handle);
 # end="") instead of trailing comma in Python 2
    gen_chunk($ValPy[$start],'(');
-   $k=index($TokenStr,'i',$start);
-   if (scalar(@_)==2){
-      $handle=$_[1];
-      $k=$start+1;
-   }elsif( $k>-1 ){
-      $handle=$ValPy[$k];
+   if( $ValClass[$start+1] eq 'i' ){
+      $handle=$ValPy[$start+1];
       $k=$start+2;
    }else{
       $handle='';
@@ -654,19 +657,19 @@ my ($k,$handle);
    if( $#ValClass>=$k ){
       $TrStatus=expression($k,$#ValClass,0);
       return -1 if ($TrStatus<0);
-      gen_chunk(',');
    }
-   if( $handle){
-      #printing to file handle
-       gen_chunk('file=',$handle); #  Python   3.x:   print('hello world', file=file_object)
-   }
-   if ($ValPerl[$start] eq 'print' && $#ValClass>=$k ){
-      if ($ValPerl[$start] eq 'print' &&  $Perlscan::PythonCode[-1]=~qr[\\n["']$] ){
+   if ($ValPerl[$start] eq 'print' && $ValClass[-1] eq '"' ){
+      if( $Perlscan::PythonCode[-1]=~qr[\\n["']$] ){
          substr($Perlscan::PythonCode[-1],-3,2)=''; # Perl print was actually say
       }else{
          gen_chunk(',end=""');
       }
    }
+   if( $handle){
+      #printing to file handle
+       gen_chunk(',file=',$handle); #  Python   3.x:   print('hello world', file=file_object)
+   }
+
    #say
    gen_chunk(')');
    return scalar(@ValClass);
