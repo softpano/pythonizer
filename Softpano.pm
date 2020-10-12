@@ -14,6 +14,8 @@ package Softpano;
 # 01.30  2020/08/10  BEZROUN   tag "##" is not used as the comment prefix for help. Minor chages and corrections
 # 01.40  2020/08/17  BEZROUN   getops is now implemented in Softpano.pm to allow the repetition of option letter to set the value of options ( -ddd)
 # 01.50  2020/09/03  BEZROUN   standard_options sub introduced. Logic of logme imporved. Messages summary convered to a sspearate sun -- summary
+# 01.60  2020/10/12  BEZROUN   Changes in abend. Other small polishing of code.
+
 use v5.10;
    use warnings;
    use strict 'subs';
@@ -152,16 +154,14 @@ my $logstamp=`date +"%y%m%d_%H%M"`; chomp $logstamp;
    $logfile="$my_log_dir/$script_name.$logstamp.log";
    open(SYSLOG, ">$logfile") || die("Fatal error: unable to open $logfile\n\n");
 my $timestamp=`date "+%y/%m/%d %H:%M"`; chomp $timestamp;
-   $title="\n\n".uc($script_name).": $title (mtime $script_mod_stamp) Started at $timestamp\nLogs are at $logfile. Type -h for help.";
+   $title="\n\n".uc($script_name).": $title (mtime $script_mod_stamp) Started at $timestamp";
    out($title);
-   for( my $i=4; $i<@_; $i++) {
-      out($_[$i]); # optional subtitles
-   }
+   out("\nLogs are at $logfile. Type -h for help.");
    out("=" x length($title));
 } #banner
 
-
 sub summary
+# print summary of diagnistic messages
 {
  my $summary=(scalar(@_)>0) ? $_[0] : 'ERROR STATISTICS: ';
    return 0 unless( scalar(@ermessage_db));

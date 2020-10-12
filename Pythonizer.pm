@@ -18,6 +18,7 @@ package Pythonizer;
 # 00.61  2020/08/25  BEZROUN   POD processing  added Option - r (refactor) added
 # 00.70  2020/09/03  BEZROUN   Stack manipulation defined more completly and moved from main script to Pythonizer.om
 # 00.80  2020/09/17  BEZROUN   Basic global varibles detection added. Global statement now is generated for each subroutine
+# 00.90  2020/10/12  BEZROUN   Option -l added. Output format improved. Many small fixes
 
 use v5.10.1;
    use warnings;
@@ -171,13 +172,7 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
    $CurSubName='main';
    $LocalSub{'main'}=1;
    while(1){
-      if( scalar(@Perlscan::BufferValClass)>0 ){
-         #procedd token buffer -- Oct 9, 2020 --NNB
-         @ValClass=@Perlscan::BufferValClass;
-         $TokenStr=join('',@ValClass);
-         @ValPerl=@Perlscan::BufferValPerl;
-         @ValPy=@Perlscan::BufferValPy;
-      }else{
+      if( scalar(@Perlscan::BufferValClass)==0 ){
          $line=getline(); # get the first meaningful line, skipping commenets and  POD
          last unless(defined($line));
          if( $::debug==2 && $.== $::breakpoint ){
@@ -185,6 +180,13 @@ my %VarSubMap=(); # matrix  var/sub that allows to create list of global for eac
             $DB::single = 1;
          }
          Perlscan::tokenize($line);
+      }else{
+         #process token buffer -- Oct 9, 2020 --NNB
+         @ValClass=@Perlscan::BufferValClass;
+         $TokenStr=join('',@ValClass);
+         @ValPerl=@Perlscan::BufferValPerl;
+         @ValPy=@Perlscan::BufferValPy;
+
       }
       unless(defined($ValClass[0])){
          next;

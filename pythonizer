@@ -136,7 +136,7 @@
 # Skip initial block of comments
 #
    $TrStatus=0;
-   chomp($line=<>); # we need to discard the first line with /usr/binperl as interpreter
+   chomp($line=<>); # we need to discard the first line with /usr/bin/perl as interpreter
    if ($PyV==3) {
       output_line('','#!/usr/bin/python3 -u'); # put a proper line
    }else{
@@ -170,18 +170,20 @@ my ($start,$token_buffer_active);
           $line=getline(); # skip lines with no tokens like ';'
           next;
       }
-      if( $debug>1 ){
-         say STDERR "\n\n === Line $. Perl source:".(defined($line)?$line:$ValPerl[0])."===\n";
-         if( $.>=$breakpoint ){
-             logme('S', "Breakpoint was triggered at line $. in pythonizer.pl");
-             # $breakpoint=999999;
-             $DB::single = 1;
-         }
-      }
+
 #
 # You need to claw back tokens from buffer for postfix conditionals. This is a pretty brittle and complex code -- Oct 8,2020 NNB
 #
-      if ( scalar(@Perlscan::BufferValClass)==0 ) { tokenize($line);   # I just like to see tokenize call first in debugger  :-)
+      if ( scalar(@Perlscan::BufferValClass)==0 ) {
+         if( $debug>1 ){
+            say STDERR "\n\n === Line $. Perl source:".(defined($line)?$line:$ValPerl[0])."===\n";
+            if( $.>=$breakpoint ){
+                logme('S', "Breakpoint was triggered at line $. in pythonizer.pl");
+                # $breakpoint=999999;
+                $DB::single = 1;
+            }
+         }
+         tokenize($line);   # I just like to see tokenize call first in debugger  :-)
       }else{
          if($token_buffer_active==0){
             @ValClass=@ValPerl=('{');
@@ -208,6 +210,7 @@ my ($start,$token_buffer_active);
          # Selected cases of postfix and prefix operator can be translated; other not
          autoincrement_fix() # exported function located in Perlscan
       }
+
       #
       # Statements
       #
@@ -398,13 +401,13 @@ my ($start,$token_buffer_active);
           $TrStatus=assignment(0);
       }elsif( $ValClass[0] eq 'c' ){
           #normal control statement: if/while/for, etc -- next line is always nested.
-          # in foreach loop "(" is absent ) do in perl you can's distibush between postfix fro and foreach loop without parens
+          # in foreach loop "(" is absent ) do in perl you can's distibush between postfix for and foreach loop without parens
           if( defined($ValType[0]) && $ValType[0] eq 'P' && $ValClass[1] ne '(' && $ValPy[0] ne 'for' ){
               insert(1,'(','(','(');
               append(')',')',')');
           }
 
-          if ($TokenStr=~/^c\(\!f\(?i\,/ && $ValPerl[3] eq 'open' ){
+          if ($TokenStr=~/^c\(\!f\(?/ && $ValPerl[3] eq 'open' ){
             $TrStatus=open_fun(3,'c');
           }else{
             $TrStatus=control(0);
@@ -958,6 +961,7 @@ my ($hashpos,$end_pos,$end_br_pos,$k,$increment,$tempvar);
 
    if( $ValPerl[$start] eq 'if'  || $ValPerl[$start] eq 'unless' ){
       if( $TokenStr eq 'c(i)') {
+          # while(<SYSIN>)
           gen_chunk("$ValPy[$start] default_var=$ValPy[$start+2]:"); # gen initial keyword
           return($#ValClass);
       }
@@ -1454,16 +1458,14 @@ my ($start,$mode)=@_;
 my($k,$myline, $target,$open_mode,$handle);
     #  open (SYSFORM,'>',$output_file ) || abend(__LINE__,"Cannot open file $output_file for");
    $k=($ValPerl[$start+1] eq '(') ? $start+2: $start+1;
-   if( $ValClass[$k] eq 'i' ){
-      $handle=$ValPy[$k];
-   }else{
-      logme('E',"File handle $ValPerl[$k] is not identifier in open statement");
-      return -255;
+   $handle=$ValPy[$k];
+   if( $ValClass[$k] ne 'i' ){
+      logme('W',"File handle $ValPerl[$k] is not identifier in open statement. Translation might be incorrect");
    }
    $k+=2 if(  $ValPerl[$k+1] eq ',');
    if( $ValClass[$k] eq '"' && $ValClass[$k+1] eq ',' ){
       # this is the second argument like in open(FILE,'>',$path);
-      $open_mode=$ValPerl[$k];
+      $open_mode=$ValPerl[$k]; # constant without quotes
       $k+=2;
       if( $ValClass[$k] eq '"' || $ValClass[$k] eq 's' ){
          $target=$ValPy[$k];
@@ -1616,6 +1618,7 @@ my ($limit,$mode,$split,$start,$prev_k,$end_pos);
          }
       }elsif( $ValClass[$cur_pos] eq 'i' && $ValClass[$cur_pos+1] eq '(' ){
          $end_pos=matching_br($cur_pos+1);
+         gen_chunk($ValPy[$cur_pos]);
          if( $LocalSub{$ValPy[$cur_pos]} ){
             # Perl user defined function -- need to pass an array
             gen_chunk('([');
@@ -1629,6 +1632,7 @@ my ($limit,$mode,$split,$start,$prev_k,$end_pos);
             gen_chunk(')');
          }else{
             #function of unknown origin
+            logme("W","Function $ValPy[$cur_pos] is niether internal not built-in function. Please check the correspondence of arguments");
             expression($cur_pos+1,$end_pos-1,1);
          }
          $cur_pos=$end_pos+1;
