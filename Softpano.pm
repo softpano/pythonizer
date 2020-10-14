@@ -14,7 +14,7 @@ package Softpano;
 # 01.30  2020/08/10  BEZROUN   tag "##" is not used as the comment prefix for help. Minor chages and corrections
 # 01.40  2020/08/17  BEZROUN   getops is now implemented in Softpano.pm to allow the repetition of option letter to set the value of options ( -ddd)
 # 01.50  2020/09/03  BEZROUN   standard_options sub introduced. Logic of logme imporved. Messages summary convered to a sspearate sun -- summary
-# 01.60  2020/10/12  BEZROUN   Changes in abend. Other small polishing of code.
+# 01.60  2020/10/12  BEZROUN   Changes in abend. Other small polishing and simplifications of the code.
 
 use v5.10;
    use warnings;
@@ -27,9 +27,9 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 @ISA = qw(Exporter);
 @EXPORT = qw(autocommit abend banner logme summary out getopts standard_options);
 $VERSION = '1.10';
-state ($msg_cutlevel1, $msg_cutlevel2, @ermessage_db, @ercounter); # remember they are statically scoped
-  $msg_cutlevel1=3;
-  $msg_cutlevel2=3;
+state ($verbosity, $msg_cutlevel2, @ermessage_db, @ercounter); # remember they are statically scoped
+  $verbosity=3;
+
 #
 # NOTE: autocommit used only in debugging mode
 # In debug mode it created backup and commit script to GIT repository, if there were changes from previous Version.
@@ -100,15 +100,13 @@ sub abend
 {
 my $message;
 my ($package, $filename, $lineno) = caller;
-      if( scalar(@_)==0 ){
-         $message="$::SCRIPT_NAME-$lineno"."T  ABEND at $lineno. No message was provided. Exiting.";
-      }else{
-         $message="$::SCRIPT_NAME-$lineno"."T $_[0]. Exiting ";
+      $message="input line number $. text of the line: $Pythonizer::IntactLine";
+      if( scalar(@_)>0 ){
+         $message.="Situation '$_[0]' at ";
       }
 #  Syslog might not be availble
-      say STDERR $message;
-      say STDERR  "\nABNORMAL COMPLETION\n\n\n";
-      #:banner('ABEND');
+      $message="\nABNORMAL COMPLETION AT $package of $::SCRIPT_NAME line $lineno:\n $message\n\n\n";
+      out($message);
       exit(-255);
 
 } # abend
@@ -121,14 +119,6 @@ sub banner {
 # Sanity check
 #
 state $logfile;
-#
-# If called from ABEND close SYSLOG and, optionally, mail the log file to the primary sysadmin
-#
-      if( scalar(@_)<4 && $_[0] eq 'ABEND' ){
-         close SYSLOG;
-         #`cat $logfile | mail -s "[ABEND for $HOSTNAME/$SCRIPT_NAME] $_[0] $PrimaryAdmin`;
-         return;
-      }
 #
 # Decode obligatory arguments
 #
@@ -214,7 +204,7 @@ my $message=$_[1];
 # Generate diagnostic message from error code, line number and message (optionally timestamp is suffix of error code is T)
 #
 my $prefix=defined($.) ? "LINE $." : '';
-      $message="$prefix [$package-$lineno$error_code]:  $message";
+      $message="$prefix [$package-$error_code$lineno]:  $message";
       my $severity=index("WEST",uc($error_code));
       if( $severity == -1 ){
          # all unknown codes.
@@ -223,8 +213,8 @@ my $prefix=defined($.) ? "LINE $." : '';
       }
       $ercounter[$severity]++; #Increase messages counter  for given severity (supressed messages are counted too)
       $ermessage_db[$severity] .= "\n\n$message"; #Error history for the ercodes E and S
-      ($severity >= $msg_cutlevel1 ) && print STDERR "$message\n";
-      ($severity >= $msg_cutlevel2 ) && print SYSLOG "$message\n";
+      ($severity >= 3-$verbosity ) && say STDERR $message;
+      say SYSLOG $message;
       return;
 } # logme
 
@@ -326,14 +316,14 @@ my $options_hash=$_[0];
    }
    if(  exists $$options_hash{'v'} ){
       if( $$options_hash{'v'} eq '' ){
-         $msg_cutlevel1=2;
+         $verbosity=2;
       }elsif( $$options_hash{'v'} =~/\d/ && length($$options_hash{'v'})==1 ){
-         $msg_cutlevel1=3-$$options_hash{'v'};
+         $verbosity=3-$$options_hash{'v'};
       }elsif( $$options_hash{'v'} =~/\d/ && length($$options_hash{'v'})==2 ){
-         $msg_cutlevel1=3-substr($$options_hash{'v'},0,1);
+         $verbosity=3-substr($$options_hash{'v'},0,1);
          $msg_cutlevel2=3-substr($$options_hash{'v'},1,1);
       }
-      if ($msg_cutlevel1<0 || $msg_cutlevel1>3 ){
+      if ($verbosity<0 || $verbosity>3 ){
          logme('S',"Wrong value of option -v. Should be an integer from 1 to 3 or letter v repeation -v -vv or -vvv. The ddefault -v 3 (or -vvv)");
           exit 255;
       }

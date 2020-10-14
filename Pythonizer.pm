@@ -48,7 +48,7 @@ our  ($IntactLine, $output_file, $NextNest,$CurNest, $line);
 #
 sub prolog
 {
-      getopts("hd:v:r:p:b:t:l:",\%options);
+      getopts("hd:v:r:b:t:l:",\%options);
 #
 # Three standard otpiotn -h, -v and -d
 #
@@ -70,16 +70,6 @@ sub prolog
          unless (-x $refactor ){
              logme('S',"File $options{'r'} specifed in option -r is not executable\n");
              exit 255;
-         }
-      }
-
-      if(   exists $options{'p'}  ){
-         if(  $options{'p'}==2  || $options{'p'}==3 ){
-            $::PyV=$options{'p'};
-            ($::debug) && logme('W',"Python version set to $::PyV");
-         }else{
-            logme('S',"Wrong value of option -p. Only values 2 and 3 are valid. You provided the value : $options('b')\n");
-            exit 255;
          }
       }
 
@@ -132,7 +122,9 @@ sub prolog
              out("Option -r (refactor) was specified. file refactored using $refactor as the fist pass over the source code");
             `pre_pythonizer -v 0 $fname`;
          }
-         `cp -p $fname $fname.bak && tr -d "\r" < $fname.bak > $fname`; # just in case
+         unless( -f "$fname.bak" ){
+            `cp -p $fname $fname.bak && tr -d "\r" < $fname.bak > $fname`; # just in case
+         }
          $fsize=-s $fname;
          if ($fsize<10){
             abend("The size of the file is $fsize. Nothing to do. Exiting");
@@ -269,8 +261,12 @@ sub getline
 state @buffer; # buffer to "postponed lines. Used for translation of postfix conditinals among other things.
    return $line if( scalar(@Perlscan::BufferValClass)>0  ); # block input if we process token buffer Oct 8, 2020 -- NNB
    if(  scalar(@_)>0 ){
-       unshift(@buffer,@_); # buffer line for processing in the next call;
-       return
+       push(@buffer,@_); # buffer lines in the order they listed; they will be injected in the next call;
+       #if (scalar(@_)==3){
+       #  say join('|',@_);
+       #  $DB::single = 1;
+       #}
+       return;
    }
    while(1 ){
       #

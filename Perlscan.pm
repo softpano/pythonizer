@@ -94,6 +94,7 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                 'say'=>'print','scalar'=>'len', 'shift'=>'.pop(0)', 'split'=>'re.split', 'sort'=>'sort', 'state'=>'global',
                    'stat'=>'os.stat','sysread'=>'read',
                    'substr'=>'','sub'=>'def','STDERR'=>'sys.stderr','SYSIN'=>'sys.stdin','system'=>'os.system','sprintf'=>'',
+                   'sysseek'=>'perl_sysseek',
                    'STDERR'=>'sys.stderr','STDIN'=>'sys.stdin', '__LINE__' =>'sys._getframe().f_lineno',
                 'rindex'=>'.rfind', 'require'=>'NoTrans!', 'ref'=>'type', 'rmdir'=>'os.rmdir',
                 'tie'=>'NoTrans!',
@@ -121,7 +122,7 @@ our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
                   'push'=>'f', 'pop'=>'f', 'print'=>'f', 'package'=>'c',
                   'rindex'=>'f','read'=>'f', 'return'=>'C', 'ref'=>'f',
                   'say'=>'f','scalar'=>'f','shift'=>'f', 'split'=>'f', 'sprintf'=>'f', 'sort'=>'f','system'=>'f', 'state'=>'t',
-                  'stat'=>'t','sub'=>'k','substr'=>'f','sysread'=>'f',
+                  'stat'=>'t','sub'=>'k','substr'=>'f','sysread'=>'f',  'sysseek'=>'f',
                   'tie'=>'f',
                   'values'=>'f',
                   'warn'=>'f', 'when'=>'C', 'while'=>'c',
@@ -143,6 +144,7 @@ my ($source,$cut,$tno)=('',0,0);
 @PythonCode=(); # array for generated code chunks
 @BufferValClass=@BufferValCom=@BufferValPerl=@BufferValPy=();
 $TokenStr='';
+$delayed_block_closure=0;
 #
 # Tokenize line into one string and three arrays @ValClass  @ValPerl  @ValPy
 #
@@ -188,10 +190,15 @@ my ($l,$m);
             $ValClass[$tno]=$ValPerl[$tno]=$s;
             $ValPy[$tno]=',';
             $cut=1; # we need to continue
+
          }else{
             # this is regular end of statement
             if( $tno>0 && $ValPerl[0] eq 'sub' ){
                $ValPy[0]='#NoTrans!'; # this is a subroutne prototype, ignore it.
+            }
+            if( $delayed_block_closure ){
+               Pythonizer::getline('}');
+               $delayed_block_closure=0;
             }
             last if( length($source) == 1); # we got full statement; semicolon needs to be ignored.
             if( $source !~/^;\s*#/  ){
@@ -576,7 +583,7 @@ my ($l,$m);
                $cut=2;
             }
          }elsif( $s eq '='  ){
-            if( index(join('',@ValClass),'c')>-1 && $::PyV==3 ){
+            if( index(join('',@ValClass),'c')>-1 ){
                $ValPy[$tno]=':=';
             }
             $cut=1;
@@ -674,9 +681,11 @@ sub bash_style_or_and_fix
 # On level zero those are used instead of if statement
 {
 my $split=$_[0];
-   # postfix conditional statement, like ($debug>0) && ( line eq ''); Aug 10, 2020 --NNB
+   # bash-style conditional statement, like ($debug>0) && ( line eq ''); Aug 10, 2020 --NNB
+   Pythonizer::getline('{');
+   $delayed_block_closure=1;
    if( $split<length($source) ){
-      Pythonizer::getline('{',substr($source,$split),'}');
+      Pythonizer::getline(substr($source,$split)); # at this point processing contines untill th eend of the statement
    }
    $source='';
    $TokenStr=join('',@ValClass); # replace will not work without $TokenStr
@@ -964,7 +973,7 @@ my  $outer_delim;
     }else{
       $outer_delim='"""';
     }
-   $result=( $::PyV==3 ) ? "f$outer_delim" : ''; #For python 3 we need special opening quote
+   $result='f'.$outer_delim; #For python 3 we need special opening quote
    while( $k > -1  ){
       if( $k > 0 ){
          if( substr($quote,$k-1,1) eq '\\' ){
@@ -973,15 +982,14 @@ my  $outer_delim;
             next;
          }else{
             # we have the first literal string  before varible
-            $result.=escape_quotes(substr($quote,0,$k),$::PyV); # with or without quotes depending on version.
-            $result.=' + ' if $::PyV==2; # add literal part of the string
+            $result.=substr($quote,0,$k); # with or without quotes depending on version.
          }
       }
-      $result.='{' if( $::PyV==3 );  # we always need '{' for f-strings
+      $result.='{';  # we always need '{' for f-strings
       $quote=substr($quote,$k);
       decode_scalar($quote,0); #get's us scalar or system var
       #does not matter what type of veriable this is: regular or special variable
-      $result.=$ValPy[$tno]; # copy string provided by decode_scalar. ValPy[$tno] changes if Perl contained :: like in $::PyV
+      $result.=$ValPy[$tno]; # copy string provided by decode_scalar. ValPy[$tno] changes if Perl contained :: like in $::debug
       $quote=substr($quote,$cut); # cure the nesserary number of symbol determined by decode_scalar.
       if( $quote=~/^\s*([\[\{].+?[\]\}])/  ){
          #HACK element of the array of hash. Here we cut corners and do not process expressions as index.
@@ -992,19 +1000,14 @@ my  $outer_delim;
          $result.=$ind; # add string Variable part of the string
          $quote=substr($quote,$cut);
       }
-
-      if( $::PyV==3 ){
-         $result.='}'; # end of variable
-      }elsif( length($quote)>0 ){
-          $result.=' + '; # for Python2  we add + only if there is at least one more chunk
-      }
+      $result.='}'; # end of variable
       $k=index($quote,'$'); #next scalar
    }
    if( length($quote)>0  ){
        #the last part
        $result.=$quote;
    }
-   $result.=( $::PyV==3 ) ? $outer_delim : '';
+   $result.=$outer_delim;
    $ValPy[$tno]=$result;
    return $close_pos;
 }
@@ -1014,16 +1017,10 @@ my  $outer_delim;
 sub escape_quotes
 {
 my $string=$_[0];
-my $ver=$_[1];
-my $quote=
 my $result;
 
-   if( $ver==2 ){
-      return qq(').$string.qq(') if(index($string,"'")==-1 ); # no need to escape any quotes.
-      return q(").$string.qq(") if( index($string,'"')==-1 ); # no need to scape any quotes.
-   }else{
-      return $string if( index($string,'"')==-1 ); # no need to scape any quotes.
-   }
+   return qq(').$string.qq(') if(index($string,"'")==-1 ); # no need to escape any quotes.
+   return q(").$string.qq(") if( index($string,'"')==-1 ); # no need to scape any quotes.
 #
 # We need to escape quotes
 #
@@ -1032,19 +1029,10 @@ my $result;
 sub put_regex_in_quotes
 {
 my $string=$_[0];
-my $ver=$_[1];
-my $result;
    if( $string =~/\$\w+/ ){
       return substr($string,1); # this case of /$regex/ we return the variable.
    }
-   return qq(r').$string.qq(') if(index($string,"'")==-1 ); # no need to escape any quotes.
-   return q(r").$string.qq(") if( index($string,'"')==-1 ); # no need to scape any quotes.
-
-#
-# We are forced to use triple quotes
-#
-   return qq(r""").$string.qq(""");
-   return $result;
+   return escape_quotes($string);
 }
 sub escape_backslash
 # All special symbols different from the delimiter and \ should be escaped when translating Perl single quoted literal to Python
@@ -1195,20 +1183,23 @@ my $pos=shift;
    splice(@ValType,$pos,0,'');
 }
 sub destroy
+# accespt two parameters
+# start of deletion
+# number of tokens; if omiited to the end of the tokenstring.
 {
 ($from,$howmany)=@_;
    # defaults and special cases
    if( $from == -1 ){
-      $from=$#ValClass
-   }
-   if( scalar(@_)==1 ){
+      $from=$#ValClass;
+      $howmany=1;
+   }elsif( scalar(@_)==1 ){
       $howmany=scalar(@ValClass)-$from; # is no length then up to the nd of arrays.
    }
     # sanity checks
    if ($from>$#ValClass) {
        logme('E',"Attempt to delete element  $from in set containing $#ValClass elements. Request ignored");
        return;
-   }elsif($from+$howmany>$#ValClass){
+   }elsif($from+$howmany>scalar(@ValClass)){
       logme('E',"Attempt to delete  $howmany from position $from exceeds the index of the last element $#ValClass. Request ignored");
       return;
    }
