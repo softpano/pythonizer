@@ -565,6 +565,7 @@ my ($l,$m);
          $digram=substr($source,0,2);
          if( exists($digram_tokens{$digram})  ){
             $ValClass[$tno]=$digram_tokens{$digram};
+            $ValPy[$tno]=$digram_map{$digram};
             $ValPerl[$tno]=$digram;
             if($ValClass[$tno] eq '0'){
                $balance=(join('',@ValClass)=~tr/()//);
@@ -573,7 +574,7 @@ my ($l,$m);
                   bash_style_or_and_fix(3);
                   last;
                }else{
-                  $cut=2;
+                  $cut=2
                }
             }else{
                if( exists($digram_map{$digram})  ){
