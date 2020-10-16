@@ -38,7 +38,7 @@
 # 0.030  2019/10/11  BEZROUN   Recursion is used to expressions, but in certain cases when I need a look-ahead, bracket counting is used instead
 # 0.040  2019/10/12  BEZROUN   Better listing for debugging implemented
 # 0.050  2019/11/06  BEZROUN   Forgot almost everything after a month; revised code just to refreash memory. Tokenizer slightly improved
-# 0.050  2019/11/07  BEZROUN   Assignment within logical expression is not allowed in Python. It is now translated correctly
+# 0.051  2019/11/07  BEZROUN   Assignment within logical expression is not allowed in Python 2.7. It is now translated correctly
 # 0.060  2019/11/08  BEZROUN   post assignment conditions like "next if( substr($line,0,1) eq '') " are processed correctly
 # 0.070  2019/11/11  BEZROUN   x=(v>0) ? y :z is now translated into ugly Python ternary operator which exists since Python 2.5
 # 0.071  2019/11/11  BEZROUN   program now correctly translated 80% codelines of pre_pythonizer.pl
@@ -77,13 +77,14 @@
 # 0.580  2020/09/03  BEZROUN   Translation of function sprintf implemented
 # 0.600  2020/09/08  BEZROUN   List on internal functions created. Translation of backquotes and open improved.
 # 0.700  2020/09/17  BEZROUN   Basic global varibles detection added. Global statement generated for each local subroutine
-# 0.800  2020/10/02  BEZROUN   More correct translation of array assignments. Globals initialiazed after main sub.  Installer added
+# 0.800  2020/10/02  BEZROUN   More correct translation of array assignments. Globals initialiazed after main sub. Installer added
 # 0.810  2020/10/05  BEZROUN   Pre-pythonizer by default does not create main subroutine
 # 0.820  2020/10/06  BEZROUN   Function parsing rewritten to accomodate some "bracketless" cases which now became a norm in Perl
 # 0.830  2020/10/08  BEZROUN   Implementation of postfix conditional is completly rewritten and now uses token buffering
 # 0.840  2020/10/09  BEZROUN   state varibles now are prefixed with the name of sub to avoid conflict with globals
 # 0.850  2020/10/12  BEZROUN   print translation improved; many fixes in lex analyser
-# 0.860  2020/10/14  BEZROUN   Python 2.7 mode eliminated to simplify the code
+# 0.860  2020/10/14  BEZROUN   Python 2.7 mode eliminated to simplify the code. Option -p removed. "since" test passed
+# 0.870  2020/10/21  BEZROUN   Treatment of brackets systematised. The code of subroutine expression revised.
 #!start ===============================================================================================================================
 
    use v5.10.1;
@@ -145,7 +146,7 @@
       getline($line); # put the first line in the readline buffer
       $line=getline(); # rescan it to have full proper processing
    }
-   foreach $l ('import sys,os,re','import fileinput,subprocess'){
+   foreach $l ('import sys,os,re','import fileinput,subprocess,inspect'){
        output_line('',$l); # to block reproducing the first source line
    }
    #while($l=<DATA>){
@@ -158,7 +159,7 @@
 #
    @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=(); # cleaning after the first pass
 my ($start,$token_buffer_active);
-   $CurSub='main';
+   $CurSub='main'; # default value of the current subroutine
    $token_buffer_active=0;
    $we_are_in_sub_body=0;
    while( defined($line) || scalar(@Perlscan::BufferValClass)>0 ){
@@ -300,7 +301,7 @@ my ($start,$token_buffer_active);
             next;
          }elsif($ValClass[1] eq '('){
             #this is a more complex case
-            $last=matching_br(1);
+            my $last=matching_br(1);
             if($#ValClass>$last && $ValClass[$last+1] eq '='){
                if($ValPerl[0] eq 'state' ){
                   rename_state_var(2,$last-1);
@@ -319,8 +320,6 @@ my ($start,$token_buffer_active);
                   }
                }
                gen_chunk('=None');
-               #$k=($last-1)/2;
-               #gen_chunk("]=[None for _ in range($k)]");
             }
           }elsif( $ValClass[2] eq '=' ){
              $TrStatus=assignment(1);
@@ -328,8 +327,7 @@ my ($start,$token_buffer_active);
             $TrStatus=-255;
           }
        }elsif( $ValClass[0] eq 'h' ){
-          #scalar assignment or reg matching; Include my/own/state
-          # expression is expected on the right side, but in Perl it can follow by condition a=2 if(b==0) => if( b==0  ){  a=2 }
+          # hash to has need method copy          #
           if( $ValClass[1] eq '=' ){
              if( $ValPerl[2] eq '(' ){
                   # Special case hash initialization needs to be converted to dictionary initialization
@@ -370,9 +368,9 @@ my ($start,$token_buffer_active);
                finish();
                next;
              }elsif(  $ValClass[2] eq 'a' && $ValPerl[3] eq '=' ){
-               #cascade assignement
-               $last_eq=rindex($TokenStr,'=');
+               my $last_eq=rindex($TokenStr,'=');
                if( $ValPerl[$last_eq+1] eq '(' ){
+                   #  list assignment @x=(1,2,3);
                    $ValPy[$last_eq+1]='[';
                    if( $ValPerl[-1] eq ')' ){
                       $ValPy[-1]=']';
@@ -383,12 +381,18 @@ my ($start,$token_buffer_active);
                    }
                }
                for( $i=0; $i<$last_eq; $i+=2 ){
+                  # cascade assignent processing @x=@y=@z
+                  if ($ValClass[$i+1] ne '='){
+                     logme('S',"Token $ValPerl[$i+1] was found insted of '=' in what is expected to be array assignment");
+                     $TrStatus=-255;
+                     last;
+                  }
                   if( $last_eq+1==@ValClass ){
-                     gen_statement("$ValPy[$i]=$ValPy[-1].copy");
+                     gen_statement("$ValPy[$i]=$ValPy[-1].copy"); # last array is the source
                   }elsif( $ValPerl[$last_eq+1] eq '(' ){
+                     #left side is the list $a=@b=(1,2,3)
                      gen_chunk("$ValPy[$i]=");
-                     $RecursionLevel=-1;
-                     expression($last_eq+1,$#ValClass);
+                     expression($last_eq+1,$#ValClass); # processing (1,2,3) -- you need brackets here.  Recursion level should be 0
                      gen_statement();
                   }
                }
@@ -408,53 +412,20 @@ my ($start,$token_buffer_active);
           if ($TokenStr=~/^c\(\!f\(?/ && $ValPerl[3] eq 'open' ){
             $TrStatus=open_fun(3,'c');
           }else{
-            $RecursionLevel=-1;
-            $TrStatus=control(0);
+            $TrStatus=control(0); # control now itself destroy the last ) Oct 14, 2020 --NNB
           }
       }elsif( $ValClass[0] eq 'C' ){
          #next last continue
          if( $ValPerl[0] eq 'elsif' ){
             gen_chunk('elif ');
             $end_pos=matching_br(1);
-            $RecursionLevel=-1;
-            $TrStatus=expression(2,$end_pos,0);
+            $TrStatus=expression(2,$end_pos-1,0);
             gen_chunk(':');
             gen_statement();
          }elsif( $ValPerl[0] eq 'else' ){
                gen_chunk('else:');
                gen_statement();
-         }elsif( $ValPerl[0] eq 'return' ||  $ValPerl[0] eq 'exit' ){
-               if(scalar(@ValClass)==1) {
-                  # single statement without parameters
-                  gen_chunk("$ValPy[0]()");
-               }else{
-                  if( $ValClass[1] ne '(' ){
-                     gen_chunk("$ValPy[0](");
-                     $RecursionLevel=-1;
-                     $TrStatus=expression(1);
-                     gen_chunk(')');
-                  }else{
-                     gen_chunk($ValPy[0]);
-                     $RecursionLevel=-1;
-                     $TrStatus=expression(1);
-                  }
-               }
-          }elsif( $#ValClass > 0 && $ValClass[1] eq 'c' ){
-               # tail conditional for next and last
-               $TrStatus=control(1); # generate coditional statement as prefix
-               gen_statement();
-               correct_nest(1,1); # next line indented
-               gen_chunk($ValPy[0]);
-               gen_statement(); # output this isngle line
-               correct_nest(-1,-1); # next line indented
-           }else{
-               # single keyword on the line like next;
-               gen_chunk($ValPy[0]);
-               if( $#ValClass>0 ){
-                   $RecursionLevel=-1;
-                   $TrStatus=expression(1,$#ValClass);
-               }
-           }
+         }
      }elsif( $ValClass[0] eq 'f' ){
          #this is a left hand function like is substr($line,0,1)='' or open or chomp;
          if( $ValPerl[0] eq 'substr' ){
@@ -462,17 +433,8 @@ my ($start,$token_buffer_active);
          }elsif( $ValPerl[0] eq 'chomp' ){
             if( $#ValPerl==0) {
                gen_chunk(q[default_var=default_var.rstrip("\n")]); # chomp with no argumnets
-            }elsif( $ValClass[1] eq '(' && $#ValClass==3 ){
-               gen_chunk($ValPy[2].'='.$ValPy[2].$ValPy[0]);
-            }elsif( $ValClass[1] eq 's' && $#ValClass==1 ){
-               # function with a single argument without paranthesys
-               gen_chunk($ValPy[1].'='.$ValPy[1].$ValPy[0]);
-            }elsif($ValClass[3] eq '='){
-               gen_chunk("$ValPy[2]=($ValPy[2]:=");
-               expression(4,$#ValClass-1,0);
-               gen_chunk(")$ValPy[0]");
             }else{
-               $TrStatus=-255;
+               function(0,$#ValClass);
             }
          }elsif( $ValPerl[0] eq 'chop' ){
             if( $ValPerl[1] eq '(' ){
@@ -488,7 +450,6 @@ my ($start,$token_buffer_active);
             $rc=open_fun(0,'s');
          }else{
             $TrStatus=function(0);
-
          }
       }elsif( $ValClass[0] eq 'x' ){
          # this is backquotes
@@ -521,21 +482,20 @@ my ($start,$token_buffer_active);
             $TrStatus=expression($right_br+1,$#ValClass,0);
          }
       }elsif( $ValClass[0] eq 'k' ){
-         # keyword for which we have no special treatment
-         if( $ValClass[0] eq '(' ){
-            $RecursionLevel=-1;
-            $TrStatus=expression(0,$#ValClass); # this will scan till ')'
-          }else{
-           $TrStatus=-1;
+         # keywords next, last and all other for which we have no special treatment
+         if( $#ValClass == 0 ){
+             gen_chunk($ValPy[0]);
+         }elsif( $ValClass[1] eq '(' ){
+            $TrStatus=expression(0,$#ValClass,0); # Can be this will scan till ')'
+         }else{
+            # last 2
+            gen_chunk($ValPy[0]);
+            $TrStatus=expression(1,$#ValClass); # this will scan till ')'
          }
       }elsif( $ValClass[0] eq 'i' ){
          # user defined functon
-         if( $ValClass[1] eq '(' ){
+         if( $#ValClass>0 && $ValClass[1] eq '(' ){
             $right_br=matching_br(1);
-         }else{
-            $right_br=$#ValClass;
-         }
-         if( $right_br eq $#ValClass ){
             if( $ValClass[2] eq ')' ){
                # function with zero arguments
                if( $ValPy[0] eq 'main' && $Pythonizer::CurNest==0 ){
@@ -554,8 +514,7 @@ my ($start,$token_buffer_active);
                # In all other cases we will put sqare bracket, even if they are redundant: they can be manually deleted.
                gen_chunk($ValPy[0]);
                gen_chunk('([');
-               $RecursionLevel=-1;
-               $TrStatus=expression(2,$#ValClass,0); # this will scan till ')'
+               $TrStatus=expression(2,$#ValClass-1,-1); # this will scan till ')' and should eliminate ')' due to -1 as 3-d arg
                gen_chunk('])');
             }
          }else{
@@ -582,7 +541,7 @@ my ($start,$token_buffer_active);
 sub finish
 # imitation of continue statement.
 {
-    if( $TrStatus<0 ){
+    if( defined($TrStatus) && $TrStatus < 0 ){
        push(@NoTrans,"[$.]: $line");
     }
     gen_statement();
@@ -640,9 +599,16 @@ my ($k,$handle);
       $handle='';
       $k=$start+1;
    }
-   if( $#ValClass>=$k ){
+   if( $#ValClass>$k ){
       $TrStatus=expression($k,$#ValClass,0);
       return -1 if ($TrStatus<0);
+   }else{
+      if(length($handle)>0){
+         gen_chunk("file=$handle)");
+      }else{
+         gen_chunk(')');
+      }
+      return;
    }
    if ($ValPerl[$start] eq 'print' && $ValClass[-1] eq '"' ){
       if( $Perlscan::PythonCode[-1]=~qr[\\n["']$] ){
@@ -789,7 +755,7 @@ sub regex_and_translate
 # process very tricky regex and tranlate function
 #
 {
-my($start,$k,$split,$is_expression)=@_;
+my($start,$k,$split)=@_;
    if( $ValClass[$split+1] eq 'f' && $ValPerl[$split+1] eq 'tr'){
       # tr is a special case -- this is not regular expression
       if( $split-$k==1 ){
@@ -872,9 +838,6 @@ my $balance=(scalar(@_)>1) ? $_[1] : 0; # case where opening bracket is missing 
      }elsif( $s eq ')' ){
         $balance--;
         if( $balance==0  ){
-           if( $RecursionLevel==0 && $ValPy[$k] ne ']' && $ValPy[$k] ne '}'  ){
-              $ValPy[$k]=''; # erase bracket on Recursion level 0 just in  case
-           }
            return $k;
         }
      }
@@ -915,22 +878,14 @@ my $begin=$_[0];
       return -255;
    }
 my $limit;
-   if( scalar(@_)>1 ){
-      $limit=$_[1];
-   }else{
-      $limit=$#ValClass;
-   }
 my ($hashpos,$end_pos,$end_br_pos,$k,$increment,$tempvar);
    $start=$begin+1;
    if( $ValPerl[$start] eq '(' ){
-      $ValPy[$start]=''; #eliminate opening bracket for conditional -- Python does not have any
-      $limit=matching_br($start); # finds the end of statement; also eliminates closing bracket
-      ($limit<0) && return -255;
-      $start++;
+       $start++;
    }
-   if($ValClass[$limit] eq ')' ){
-      Perlscan::destroy($limit);
-      $limit--;
+   if($ValClass[-1] eq ')' ){
+      Perlscan::destroy(-1); # eliminate last bracket  -- Perl does not enclose controlstatements in bralckts.
+      $limit=$#ValClass; # exclude it from count
    }
 
    if( $ValPerl[$begin] eq 'if'  || $ValPerl[$begin] eq 'unless' ){
@@ -940,7 +895,7 @@ my ($hashpos,$end_pos,$end_br_pos,$k,$increment,$tempvar);
           return($#ValClass);
       }
       gen_chunk($ValPy[$begin]); # gen initial keyword
-      $k=expression($start,$limit,0);
+      $k=expression($start,$limit,0); # last bracket was erased.
       return -255 if ($k<0);
       gen_chunk(':');
       return($#ValClass);
@@ -1078,344 +1033,367 @@ my $balance=0;
    } # for
    return -1; # not found
 } # next_comma
-
 sub function
+# Built-in  functions processing
 {
 my $begin=$_[0];
-my $limit=(scalar(@_)>=2) ? $_[1] : $#ValClass;
-my ($bracketed, $end_pos, $k, $split, $split2, $delta, $dict, $incr, $arg1, $arg2, $perl_name, $py_name);
+my ($limit,$start );  # $limit is the position of closing bracket, if any
+                      # start is the position of the first symbol after the opening bracket
+  $start=$begin+1; # default start for parentheiss less function;
+  if( scalar(@_)>1 ){
+    $end_pos=$limit=$_[1];
+  }
+my $bracketed=0;  # nessesary for the proper call of expression.
+  if( $begin==$#ValClass || scalar(@_)>1 && $begin==$limit ){
+     $bracketed=-1; # serves as zero arg flag;
+  }elsif( $begin<$#ValClass && $ValClass[$begin+1] eq '(' ){
+    $bracketed=1;
+    $limit=matching_br($begin+1);
+    $start=$begin+2;  # function call with normal pathethis
+    if( $ValClass[$limit] eq ')' ){ $end_pos=$limit-1; }
+  }elsif( ($k=index($TokenStr,'0'))>=1 ){
+      $end_pos=$limit=$k-1; # if we have && that function should end before it
+  }else{
+    $end_pos=$limit=$#ValClass;
+  }
+my ($k, $split, $split2, $delta, $dict, $incr, $arg1, $arg2, $perl_name, $py_name);
    if( $begin<0 || $TrStatus<0 ){
       $TrStatus=-255;  return -255;
    }
-
-   if ($#ValPerl==$begin || $begin==$limit ){
-      $start=$end_pos=$begin;
-      $bracketed=0;
-   }else{
-       $bracketed=($ValPerl[$begin+1] eq '(') ? 1 : 0;
-       $end_pos=($bracketed) ? matching_br($begin+1) : $limit;
-       $start=$begin+$bracketed+1;
-   }
-   if( ($k=index($TokenStr,'0'))>=1 ){
-      $limit=$k-1; # if we have && that function should end before it
-   }
    $perl_name=$ValPerl[$begin];
    $py_name=$ValPy[$begin];
-
+#
+# At this point
+#   $start is the first token after prath (if presnet)
+#   $end_pos is the sybol befor closing paren, if present
+#   $limit -- the last symbol that belongs to this function, Scanning will start from $limit+1
    if( $perl_name eq 'substr' ){
-         # substr($line,$from, To )
-         #        0    1 2   3 4  5
-         if (substr($TokenStr,$start,$end_pos-$start+1) =~ /^s,([-]?d),([-]?d)\)?/) {
-            # the simplest case when start and length of the substring are constants: substr($test,-1,1);
-            $arg1=$ValPy[index($TokenStr,'d',$start)];
-            $arg2=$ValPy[$end_pos-1];
-            if( length($1) == 2 && substr($1,0,1) eq '-' ){ $arg1=-$arg1; }
-            if( length($2) == 2 && substr($2,0,1) eq '-' ){ $arg2=-$arg2; }
-            if( length($arg2)==1){
-               # positive
-               gen_chunk("$ValPy[$start]\[$arg1\]"); # single symbol
-            }elsif( $arg1<0 && -$arg1>=$arg2 ){
-                gen_chunk("$ValPy[$start]\[$arg1:\]"); # last symbol
-            }elsif( $arg2>0 ){
-                $arg2+=$arg1;
-                gen_chunk("$ValPy[$start]\[$arg1:$arg2\]"); # positive length added to the first index
-            }elsif($arg2<0) {
-                gen_chunk("$ValPy[$start]\[$arg1:$arg2\]"); # negative value is not length but the position from the last
-            }else{
-                $TrStatus=-1;  return -255;
-            }
-            return $end_pos+1; # $end_pos signifies the end of function
-         }
-         # more complex case with varibles or expression in ither second or the third arguments
-         #step1 -- generate varible from which substipng is extracted (can be expression)
-         if( substr($TokenStr,$start+1,1) eq ',' ){
-            # Simplest case -- scalar varaible or constant is used
-            gen_chunk($ValPy[$start]); #name of the variable
-            $split=$start+1;
+      # substr($line,$from, To )
+      #        0    1 2   3 4  5
+      if( substr($TokenStr,$start,$end_pos-$start+1) =~ /^s,([-]?d),([-]?d)/ ){
+         # the simplest case when start and length of the substring are constants: substr($test,-1,1);
+         $arg1=$ValPy[index($TokenStr,'d',$start)];
+         $arg2=$ValPy[$end_pos];
+         if( length($1) == 2 && substr($1,0,1) eq '-' ){ $arg1=-$arg1; }
+         if( length($2) == 2 && substr($2,0,1) eq '-' ){ $arg2=-$arg2; }
+         if( length($arg2)==1){
+            # positive
+            gen_chunk("$ValPy[$start]\[$arg1\]"); # single symbol
+         }elsif( $arg1<0 && -$arg1>=$arg2 ){
+             gen_chunk("$ValPy[$start]\[$arg1:\]"); # last symbol
+         }elsif( $arg2>0 ){
+             $arg2+=$arg1;
+             gen_chunk("$ValPy[$start]\[$arg1:$arg2\]"); # positive length added to the first index
+         }elsif($arg2<0) {
+             gen_chunk("$ValPy[$start]\[$arg1:$arg2\]"); # negative value is not length but the position from the last
          }else{
-            $split=next_same_level_token(',',$start,$end_pos);
-            if( $split==-1 ){
-               $TrStatus=-1;  return -255
-            }
-            $k=expression($start,$split-1,0);
-            return -255 if ($k<0);
+             $TrStatus=-1;  return -255;
          }
-         gen_chunk('['); # opening  bracket
-         if( substr($TokenStr,$split,3) =~ /,d[),]/){
-            $arg1=$ValPy[$split+1];
-         }elsif(substr($split,0,3) =~ /,-d[),]/){
-            $arg1=-$ValPy[$split+2];
-         }
-
-         #determine if there are two or three argument
-         $split2=next_same_level_token(',',$split+1,$end_pos);
-         if( $split2>-1 ){
-             # substr($line,$start,$lenth) -- three arguments present
-             #generate length
-             if( substr($TokenStr,$split2,$end_pos-$split2)=~/,d\)/ && $ValPy[$split2+1] == 1 ){
-               gen_chunk(']'); # single symbol
-               return $end_pos+1;
-             }
-             $k=expression($split+1,$split2-1,0); # generate the secong arg
-             return -255 if ($k<0);
-             gen_chunk(':');
-             if (substr($TokenStr,$split2,$end_pos-$split2) =~/,[-]?d\)/){
-                  # third arg is constant
-                  $arg2=$ValPy[$end_pos-1];
-                  if ($ValClass[$split2+1] eq '-'){
-                     $arg2=-$arg2;
-                  }
-                  if ($arg2 < 0 || (defined($arg1) && $arg1==0) ){
-                     gen_chunk($arg2); # substr($line,0,$end) or substr($line,$start,-3);
-                  }else{
-                     $k=expression($split+1,$split2-1,0); # generate secong argument again
-                     gen_chunk("+$arg2");
-                  }
-             }elsif(substr($TokenStr,$split2+1,1) eq '-') {
-                $k=expression($split2+1,$end_pos-1,0);
-                return -255 if ($k<0);
-             }else{
-                if (defined($arg1) && $arg1==0) {
-                    $k=expression($split2+1,$end_pos-1,0);
-                }else{
-                  $k=expression($split+1,$split2-1,0); # generate secong argument again
-                  gen_chunk(' + ');
-                  $k=expression($split2+1,$end_pos-1,0);
-                  return -255 if ($k<0);
-                }
-             }
-             gen_chunk(']');
-         }else{
-            # substr($line,$start)
-            $k=expression($split+1,$end_pos-1,0);
-            return -255 if ($k<0);
-            gen_chunk(':]');
-         }
-         return $end_pos+1; # $end_pos signifies the end of function
-      } #substr
-
-      if( $perl_name eq 'index' || $perl_name eq 'rindex' ){
-         # index(text,'search',from)
-         #       0   1 2      3 4
-         # string.find(text, substr, start)
-         if( $ValClass[$start+1] eq ',' ){
-            # Simplest case -- scalar varaible is used
-            gen_chunk("$ValPy[$start]$py_name("); # line.find -- .find is now in scannet table Nov 15, 2019 --NNB
-            $split=$start+2;
-         }else{
-            $split=next_same_level_token(',',$start,$end_pos); # next comma on the same nesting level
-            $k=expression($start+2,$split-1,0);
-            return -255 if ($k<0);
-            gen_chunk("$ValPy[$start]("); # .find and opening  bracket
-         }
-         $split2=next_same_level_token(',',$split+1,$end_pos);
-         # processing string to find
-         if( $split2>-1 ){
-             # index($line,$string,$start)
-             if( $split+2==$split2 ){
-                gen_chunk($ValPy[$split+1]);
-             }else{
-                $k=expression($split+1,$split2-1,0);
-                return -255 if ($k<0);
-             }
-             gen_chunk(',');
-             $k=expression($split2+1,$end_pos-1,0);
-             return -255 if ($k<0);
-             gen_chunk(')');
-         }else{
-            # index($line,'xxx') -> line.find('xxx')
-            $k=expression($split,$end_pos-1,0);
-            return -255 if ($k<0);
-            gen_chunk(')');
-         }
-         return $end_pos+1; # $end_pos signifies the end of function
-      }elsif( $perl_name eq 'join' ){
-         # $args=join(' ',@ARGS) => args=ARGS.join(' ');
+         return $limit+1; # $limit is the position of closing bracket, if any
+      }
+      # more complex case with varibles or expression in iether second or the third arguments
+      #step1 -- generate varible from which substing is extracted (can be an expression)
+      if( substr($TokenStr,$start+1,1) eq ',' ){
+         # Simplest case -- scalar varaible or constant is used
+         gen_chunk($ValPy[$start]); # a simple first arg -- the name of the variable or a string
+         $split=$start+1;
+      }else{
          $split=next_same_level_token(',',$start,$end_pos);
-         if($end_pos-$split==2 ){
-            # the second argument is not expression or function
-            gen_chunk($ValPy[$end_pos-1],$py_name); # gen .join(
-         }else{
-            $TrStatus=expression($split+1,$end_pos-1);
-            return $TrStatus if ($TrStatus<0);
-            gen_chunk($py_name); # gen .join
+         if( $split==-1 ){
+            $TrStatus=-1;  return -255
          }
-         if( $split-$start==1 ){
-            gen_chunk($ValPy[$start].')'); # gen delimiter
-         }else{
-            $TrStatus=expression($start,$split-1);
-            return $TrStatus if ($TrStatus<0);
-            gen_chunk(')'); # gen delimiter
-         }
-         return $end_pos+1;
-      }elsif( $perl_name eq 'open' ){
-         $TrStatus=open_fun($begin,'f'); # open like function, for example in if
-         return -255 if( $TrStatus < 0 );
-         return($#ValClass); # this is a statement masqurading as function
-      }elsif( $perl_name eq 'exists' ){
-         $k=$start;
-         if( $ValClass[$k] eq 's') {
-            $dict=$ValPy[$k];
-            $k+=2;
-            if( $k+1<=$#ValPerl && $ValClass[$k+1] eq ')' ) {
-               #single token between {}
-               if( $ValClass[$k] eq 's' || $ValClass[$k] eq '"' || $ValClass[$k] eq "'"){
-                  gen_chunk("$ValPy[$k] in $dict");
-                  return $k+2;
+         $k=expression($start,$split-1,0);
+         return -255 if ($k<0);
+      }
+      #
+      # Processing of thesecond arg -- starting position. Can beconstant or expression
+      #
+      gen_chunk('['); # opening  bracket
+      if( substr($TokenStr,$split,3) =~ /,(\-?)d[),]/){
+         $arg1=( length($1)==1) ? -$ValPy[$split+1] : $ValPy[$split+1];
+         $arg1=$ValPy[$split+1];
+      }
+      #determine if there are two or three argument
+      $split2=next_same_level_token(',',$split+1,$end_pos);
+      if( $split2>-1 ){
+          # substr($line,$start,$lenth) -- the third argumant is present
+          $k=expression($split+1,$split2-1,0); # generate the secong arg
+          return -255 if ($k<0);
+          if( $end_pos-$split2==1 && $ValClass[$end_pos] eq 'd'){
+               #positive length
+               $arg2=$ValPy[$end_pos];
+               if ( $ValPy[$split2+1] == 1 ){
+                  gen_chunk(']'); # substr($line,$a,1) -- the third arg is 1
+                  return $limit+1;
                }
-               return -255;
-            }else{
-               $limit=matching_br($k-1);
-               $k=expression($k-1,$limit,1);
-               return -255 if ($k<0);
-            }
-         }else{
-           return -255
-         }
-      }elsif(substr($perl_name,0,1) eq '-') {
-         #file predicates
-          gen_chunk($py_name.'('.$ValPy[$start].')');
-          return $start+1;
-      }elsif( $perl_name eq 'split' ){
-         $k=$start; # pos of the first arg
-         if ($bracketed && $ValPerl[$k] eq ')'){
-            # special case of splitting default varible on white space
-            gen_chunk("default_var.split(' ')");
-            return $end_pos+1;
-         }
-         $arg1=$ValPy[$k];  # first argument is present
-         $arg1type=$ValClass[$k];
-         if($ValPerl[$k+1] ne ','){
-            # special case of splitting degaqult varible on white space
-            if( $arg1 eq ' ' || $arg1type eq '"' ){
-               gen_chunk("default_var.split($arg1)");
-            }else{
-               gen_chunk($py_name,"($arg1,default_var"); # this is a regex function
-            }
-            return $end_pos+1;
-         }
-         $k+=2; # $k now points to the start of the second argument
-         if( $end_pos-$k==$bracketed ){
-            $arg2=$ValPy[$k];
-            $k+=1;
-            if( $arg1 eq ' ' || $arg1type eq '"' ){
-               gen_chunk("$arg2.lstrip($arg1");
-            }else{
-               gen_chunk($py_name,"($arg1,$arg2"); # this is a regex function
-            }
-         }elsif( ($split=next_same_level_token(',',$k+1,$end_pos))>-1 ){
-            #we have third argument to split
-            gen_chunk($py_name,"($arg1,");
-            $k=expression($k,$split-1);
-            gen_chunk(',');
-            if( $end_pos-$split==1 ){
-               gen_chunk($ValPy[$k]);
-            }else{
-               $k=expression($split+1,$end_pos,0);
-               return -255 if($k<0);
-            }
-         }
+               gen_chunk(':');
+               if( defined($arg1) ){
+                  # rescn first arg and add the second
+                  if ($arg1==0){
+                     gen_chunk($arg2);
+                  }else{
+                     $arg2=$arg1+$arg2;
+                     gen_chunk($arg2);
+                  }
+               }else{
+                  $k=expression($split2+1,$end_pos,0);
+                   gen_chunk("+$arg2");
+               }
+               gen_chunk("]");
+          }elsif( $end_pos-$split2==2 && substr($TokenStr,$split2,3) eq ',-d' ){
+              # third arg is negative constant. Can be used directly.
+              gen_chunk(':');
+              $arg2=-$ValPy[$end_pos];
+              gen_chunk("$arg2]");
+          }else{
+             # general case of the third argument -- need to rescan the first and add the second
+              gen_chunk(':');
+             if (defined($arg1)){
+               gen_chunk("$arg1+");
+               $k=expression($split2+1,$end_pos,0);
+               gen_chunk(']');
+             }else{
+                $k=expression($split+1,$split2-1,0); # generate secong argument again
+                return -255 if ($k<0);
+                gen_chunk("+");
+                $k=expression($split2+1,$end_pos,0);
+                return -255 if ($k<0);
+                gen_chunk(']');
+             }
+          }
+      }else{
+         # substr($line,$start)
+         $k=expression($split+1,$end_pos,0);
+         return -255 if ($k<0);
+         gen_chunk(':]');
+      }
+   }elsif( $perl_name eq 'index' || $perl_name eq 'rindex' ){
+      # index(text,'search',from)
+      #       0   1 2      3 4
+      # string.find(text, substr, start)
+      if( $ValClass[$start+1] eq ',' ){
+         # Simplest case -- scalar varaible is used
+         gen_chunk("$ValPy[$start]$py_name("); # line.find -- .find is now in scannet table Nov 15, 2019 --NNB
+         $split=$start+2;
+      }else{
+         $split=next_same_level_token(',',$start,$end_pos); # next comma on the same nesting level
+         $k=expression($start+2,$split-1,0);
+         return -255 if ($k<0);
+         gen_chunk("$ValPy[$start]("); # .find and opening  bracket
+      }
+      $split2=next_same_level_token(',',$split+1,$end_pos);
+      # processing string to find
+      if( $split2>-1 ){
+          # index($line,$string,$start)
+          if( $split+2==$split2 ){
+             gen_chunk($ValPy[$split+1]);
+          }else{
+             $k=expression($split+1,$split2-1,0);
+             return -255 if ($k<0);
+          }
+          gen_chunk(',');
+          $k=expression($split2+1,$end_pos,0);
+          return -255 if ($k<0);
+          gen_chunk(')');
+      }else{
+         # index($line,'xxx') -> line.find('xxx')
+         $k=expression($split,$end_pos,0);
+         return -255 if ($k<0);
          gen_chunk(')');
+      }
+   }elsif( $perl_name eq 'join' ){
+      # $args=join(' ',@ARGS) => args=ARGS.join(' ');
+      $split=next_same_level_token(',',$start,$end_pos);
+      if($end_pos-$split==1 ){
+         # the second argument is not expression or function
+         gen_chunk($ValPy[$end_pos],$py_name); # gen array.join('');
+      }else{
+         $TrStatus=expression($split+1,$end_pos);
+         return $TrStatus if ($TrStatus<0);
+         gen_chunk($py_name); # gen .join
+      }
+      if( $split-$start==1 ){
+         gen_chunk($ValPy[$start].')'); # gen delimiter
+      }else{
+         $TrStatus=expression($start,$split-1);
+         return $TrStatus if ($TrStatus<0);
+         gen_chunk(')'); # close function invocation
+      }
+   }elsif( $perl_name eq 'open' ){
+      $TrStatus=open_fun($begin,'f'); # open like function, for example in if
+      return -255 if( $TrStatus < 0 );
+   }elsif( $perl_name eq 'exists' ){
+      # applicable to the elemnt of hash only
+      $k=$start;
+      if( $ValClass[$k] eq 's') {
+         $dict=$ValPy[$k];
+         $k+=2;
+         if( $k+1<=$#ValPerl && $k+1==$end_pos ) {
+            #single token between {}
+            if( $ValClass[$k] eq 's' || $ValClass[$k] eq '"' || $ValClass[$k] eq "'"){
+               gen_chunk("$ValPy[$k] in $dict");
+               return $k+3; # you need to skip two closing brackets: })
+            }
+            return -255;
+         }else{
+            $k=expression($k-1,$limit,1); #preserve brackets
+            return -255 if ($k<0);
+         }
+      }else{
+        return -255
+      }
+   }elsif(substr($perl_name,0,1) eq '-') {
+      #file predicate, always one agument
+       gen_chunk($py_name.'('.$ValPy[$start].')');
+   }elsif( $perl_name eq 'split' ){
+      $k=$start; # pos of the first arg
+      if ($bracketed==1 && $ValPerl[$k] eq ')'){
+         # special case of splitting default varible on white space
+         gen_chunk("default_var.split(' ')");
          return $end_pos+1;
-      }elsif($perl_name eq 'print' ) {
-         $TrStatus=print3($begin); # in Python3 this is a function
-         if ($TrStatus<0) { return -255; }
-         return $TrStatus+1;
-      }elsif($perl_name eq 'defined' ) {
-         # open used without parantethisi. always has one argument
-         $k=$start;
-         gen_chunk("$ValPy[$k] != none");
-         $k=($k+1<=$#ValPerl && $ValPerl[$k+1] eq ')') ? $k+2 : $k+1;
-         return $k;
-      }elsif($perl_name eq 'unshift' ){
-         # always has one argument
-         # arrayOrList.insert(0 , element)
-         $k=$start;
-         gen_chunk($ValPy[$k],$py_name,$ValPy[$k+2],')');
-         $k=($k+3<=$#ValPerl && $ValPerl[$k+3] eq ')') ? $k+4 : $k+3;
-         return $k;
-       }elsif($perl_name eq 'shift' ){
-         # if no argument then it uses @_ array
-         if ($limit==$start){
-             gen_chunk("perl_arg_array$py_name");
-         }elsif( $bracketed || $limit-$start==1 ){
-            gen_chunk($ValPy[$start],$py_name);
-         }elsif( $bracketed==0 || $limit==$start ){
-            gen_chunk($ValPy[$start],$py_name);
+      }
+      $arg1=$ValPy[$k];  # first argument is present
+      $arg1type=$ValClass[$k];
+      if($ValPerl[$k+1] ne ','){
+         # special case of splitting degaqult varible on white space
+         if( $arg1 eq ' ' || $arg1type eq '"' ){
+            gen_chunk("default_var.split($arg1)");
          }else{
-           return -255;
+            gen_chunk($py_name,"($arg1,default_var"); # this is a regex function
          }
-         return $start+1;
-      }elsif($perl_name eq 'push' ){
-         # open used without parantethisi. always has one argument
-         $k=$start;
-         if ($ValClass[$k+2] eq 'a' ){
-            gen_chunk($ValPy[$k],$py_name,$ValPy[$k+2],')');
-         }elsif($ValClass[$k+2] eq '(' ){
-             $limit=matching_br($k+2);
-             gen_chunk($ValPy[$k],$ValPy[$start].'[');
-             $k=expression($k+3,$limit-1,0);
-             gen_chunk($ValPy[$k],$ValPy[$start],'])');
+         return $end_pos+1;
+      }
+      $k+=2; # $k now points to the start of the second argument
+      if( $k==$end_pos ){
+         $arg2=$ValPy[$k];
+         $k+=1;
+         if( $arg1 eq ' ' || $arg1type eq '"' ){
+            gen_chunk("$arg2.lstrip($arg1");
          }else{
-            gen_chunk($ValPy[$k],'.append(',$ValPy[$k+2],')');
+            gen_chunk($py_name,"($arg1,$arg2"); # this is a regex function
          }
-         $k=($ValPerl[$k+3] eq ')') ? $k+4 : $k+3;
-         return $k;
-      }elsif($perl_name eq 'delete' ){
-         # open used without parantethisi. always has one argument
-         $k=($ValPerl[$start+1] eq '(') ? $start+2 : $start+1;
-         gen_chunk($ValPy[$k],$py_name,$ValPy[$k+2],')'); # delete($hash{$key}) => hash.pop($key)
-         $k=($ValPerl[$k+4] eq ')') ? $k+5 : $k+4;
-         return $k;
-      }elsif($perl_name eq 'sprintf' ){
-         #
-         gen_chunk($ValPy[$start],' % ( '); # format string
-         $k=expression($start+2); # skip initial','
-         return -255 if $k<0;
-         if( $ValPy[$k-1] ne ')' ){
-            gen_chunk(')'); #
+      }elsif( ($split=next_same_level_token(',',$k+1,$end_pos))>-1 ){
+         #we have third argument to split
+         gen_chunk($py_name,"($arg1,");
+         $k=expression($k,$split-1);
+         gen_chunk(',');
+         if( $end_pos-$split==1 ){
+            gen_chunk($ValPy[$k]);
+         }else{
+            $k=expression($split+1,$end_pos,0);
+            return -255 if($k<0);
          }
-         return $k;
-      }elsif($perl_name eq 'undef'  ){
+      }
+      gen_chunk(')');
+   }elsif($perl_name eq 'print' ) {
+      $TrStatus=print3($begin); # in Python3 this is a function
+      if ($TrStatus<0) { return -255; }
+   }elsif($perl_name eq 'defined' ) {
+      # open used without parantethisi. always has one argument
+      $k=$start;
+      gen_chunk("$ValPy[$k] != none");
+      $k=($k+1<=$#ValPerl && $ValPerl[$k+1] eq ')') ? $k+2 : $k+1;
+   }elsif($perl_name eq 'unshift' ){
+      # unshift ARRAY,LIST
+      # arrayOrList.insert(0 , element)
+      $k=$start;
+      gen_chunk($ValPy[$k],$py_name,$ValPy[$k+2],')');
+      $k=($k+3<=$#ValPerl && $ValPerl[$k+3] eq ')') ? $k+4 : $k+3;
+   }elsif($perl_name eq 'shift' ){
+      # assent only a single arg -- array; if no argument then it uses @_ array
+      if( $bracketed==-1 ){
+         if( $CurSub eq 'main' || $Pythonizer::CurNest==0 ){
+            $arg1='sys.argv';
+         }else{
+            $arg1='perl_arg_array';
+         }
+         gen_chunk("$arg1$py_name");
+      }elsif( $end_pos==$start ){
+         gen_chunk($ValPy[$start],$py_name);
+      }else{
+        return -255;
+      }
+   }elsif( $perl_name eq 'push' ){
+      $k=$start;
+      if( $ValClass[$k+2] =~ /[a"]/ ){
+      }elsif( $ValClass[$k+2] eq 'a' ){
+         gen_chunk($ValPy[$k],$py_name,$ValPy[$k+2],')'); # push(@x,@y)
+      }elsif($ValClass[$k+2] eq '(' ){
+          gen_chunk($ValPy[$k],$py_name.'[');
+          $k=expression($k+3,$end_pos,0);
+          gen_chunk('])');
+      }else{
+          $k=expression($k+3,$end_pos,0);
+      }
+   }elsif($perl_name eq 'delete' ){
+      # open used without parantethisi. always has one argument
+      $k=($ValPerl[$start+1] eq '(') ? $start+2 : $start+1;
+      gen_chunk($ValPy[$k],$py_name,$ValPy[$k+2],')'); # delete($hash{$key}) => hash.pop($key)
+   }elsif($perl_name eq 'sprintf' ){
+      #$ValPy[$start] -- format string
+      gen_chunk($ValPy[$start],' % ( '); # format string
+      $k=expression($start+2,$end_pos,0); # skip initial',' and scan all variables
+      return -255 if $k<0;
+      gen_chunk(')'); #
+   }elsif($perl_name eq 'undef'  ){
+      # undef in Perl accepts list of arguments
+      if( $bracketed==-1){
+          gen_chunk('None');
+      }else{
          gen_chunk("$ValPy[$start]");
          for(my $i=$start+1; $i<$end_pos; $i+=2 ){
-            last if ($ValClass[$i] ne ',');
+            last if ($ValClass[$i] ne ','); # check if the list endeded
             gen_chunk("=$ValPy[$i+1]");
          }
-         gen_chunk("=None");
-         return $end_pos+1;
+         gen_chunk("=None"); # final assignment
       }
-      #
-      # Generic Perl built-in function
-      #
-
-      if( substr($py_name,0,1) eq '.' ){
-         #this is a method in Python
-         $TrStatus=expression($start,$end_pos,0);
-         return -255 if ($TrStatus<0);
-         gen_chunk($py_name); # add method
+   }elsif($perl_name eq 'chomp'  ){
+      # undef in Perl accepts list of arguments
+      if ($bracketed==-1){
+          gen_chunk($ValPy[1]."=default_var$py_name");
+      }elsif ($start==$end_pos){
+         gen_chunk($ValPy[$start].'='.$ValPy[$start].$py_name);
       }else{
-         gen_chunk($py_name);
-         if ( $end_pos-$start == 0 ){
-            # zero arguments -- special case
-            gen_chunk('()');
-         }elsif( $end_pos-$start == 1 ){
-            # single argument
-            gen_chunk('('.$ValPy[$start].')')
-         }elsif( $bracketed ){
-            $TrStatus=expression($start,$end_pos,1);
-            return -255 if ($TrStatus<0);
-         }else{
-            gen_chunk('(');
-            $TrStatus=expression($start,$end_pos,0);
-            return -255 if ($TrStatus<0);
-            gen_chunk(')');
+         for(my $i=$start+1; $i<$end_pos; $i+=2 ){
+            last if ($ValClass[$i] ne ','); # check if the list endeded
+            gen_chunk($ValPy[$i],'=',$ValPy[$i],$ValPy[0],';');
          }
       }
-      return $end_pos+1;
-
+   }elsif($perl_name eq 'chop'){
+       gen_chunk("$ValPy[$start]=$ValPy[$start]".'[0,-1]');
+   }elsif( substr($py_name,0,1) eq '.' ){
+      #Generic Perl built-in function which is a method in Python
+      $ValPy[$limit]='' if $bracketed==1; # in this case we do not need to process closing bracket.
+      $TrStatus=expression($start,$end_pos,0);
+      return -255 if ($TrStatus<0);
+      gen_chunk($py_name); # add method
+   }else{
+      gen_chunk($py_name);
+      if ( $bracketed==-1 ){
+         # zero arguments -- special case
+         gen_chunk('()');
+      }elsif( $end_pos==$start ){
+         # single argument
+         gen_chunk('('.$ValPy[$start].')')
+      }elsif( $bracketed==1 ){
+         $TrStatus=expression($start,$end_pos,1);
+         return -255 if ($TrStatus<0);
+      }else{
+         gen_chunk('(');
+         $TrStatus=expression($start,$end_pos,0);
+         return -255 if ($TrStatus<0);
+         gen_chunk(')');
+      }
+   }
+   return $limit+1; # limit_1 always represnt the fist not scanned symbol for this function.
 } #function
+
 sub open_fun
+#
+# Process Perl open statement
+# assents two parameters
+#   start --  Starting postion
+#   mode  -- 's' or 'f' statement or invocation in expression
 {
 my ($start,$mode)=@_;
 #my $limit=(scalar(@_)>1) ? $_[1] : balance_br($start+1);
@@ -1461,7 +1439,8 @@ my($k,$myline, $target,$open_mode,$handle);
    }
 
    if( $mode eq 'f' ){
-     gen_chunk("$handle:=open($target,'$open_mode')");
+     logme('E',"In case of error open function in Python raises the FileNotFoundError exception. The code should be revised");
+     gen_chunk("($handle:=open($target,'$open_mode'))");
      return $k+1 if ($ValClass[$k+1] eq ')');
      return $k+1;
    }elsif( $mode eq 's' ){
@@ -1491,7 +1470,8 @@ sub expression
 # Arg1 == (obligatory) starting point
 # Arg2 -- limit  -- the last token to scan.
 # Arg3 -- mode of operation
-#         0 - remove the inital round brackets
+#         -1 - Put '' in ValPy for external brackets
+#         0 - do not intefere with external blackets
 #         1 -preserve round brackets
 # Arg 4 -- if given set recursion level to 0
 {
@@ -1501,7 +1481,7 @@ my $begin=$_[0];
       return -255;
    }
 
-my ($cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
+my ($bracketed,$cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
    if( $begin<0 || $TrStatus<0 ){
        $TrStatus=-1; return -255;
    }elsif( $begin>$#ValClass ){
@@ -1509,23 +1489,31 @@ my ($cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
    }else{
       $cur_pos=$begin;
    }
-   $start=$cur_pos;
+   $start=$cur_pos;  # starting point possibly from && or ||  -- we need that for regular expressions.
    $mode=(scalar(@_)>2) ? $_[2] : 0; # $mode allows brackets to be supressed but only on recursion level 0
                                      # $mode 1 injects ( and ) if they are not present
-   if( scalar(@_)==1 ){
-       $limit=$#ValClass;
-   }elsif( $_[1]<0 ){
-       $limit=matching_br($cur_pos);
+   $limit=$#ValClass;
+   $bracketed=0;
+   if( scalar(@_)>1 ){
+      $limit=$_[1];
+   }elsif( $ValClass[$begin] eq '(' ){
+         $limit=matching_br($begin);
    }else{
        $limit=$_[1];
    }
+   $bracketed=1 if $ValClass[$begin] eq '(';
    $RecursionLevel++; # we are starting from 0
 
    #
-   # Do we need to add opening braket, which is missing because we put start as the next symbol
+   # we need tocoorect end_pos in case there is a closing bracket to $limit-1
    #
-   if( $mode==1 && $ValClass[$cur_pos] ne '(' ){
-       gen_chunk('('); # generate artificial opening braket
+   $end_pos=$limit;
+   if( $mode==1 && $bracketed==0 ){
+       gen_chunk('('); # generate opening bracket, as requested
+   }elsif( $mode==-1  && $ValClass[$begin]  eq '(' && $ValClass[$limit] eq ')'){
+      # eliminate closing bracket
+      $ValPy[$limit]='';
+      $end_pos=$limit-1;
    }
    $prev_k=-1; # starting position of infinite loop preventor.
    while($cur_pos<=$limit ){
@@ -1533,34 +1521,25 @@ my ($cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
          $TrStatus=-1; return -255;
        }
        unless( defined($ValClass[$cur_pos]) ){
-         say "Undefined ValClass $cur_pos. Attempting to switch to debug  mode ";
+         say "Undefined ValClass at pos $cur_pos. Attempting to switch to debug  mode ";
          $DB::single = 1;
       }
-      # return $cur_pos+1 if( defined($last_token) && $ValClass[$cur_pos] eq $last_token); # Nov 11, 2019 -- unlear if we need this functionality or not
+      #
       if( $ValClass[$cur_pos] eq '(' ){
          # generate bracket if mode=1 or recursion level is above zero
          gen_chunk($ValPy[$cur_pos]);
-         $cur_pos=expression($cur_pos+1,$limit,0); # preserve brackets
+         $cur_pos=expression($cur_pos+1,$end_pos,0); # preserve brackets
          ($cur_pos<0) && return -255;
       }elsif(  $ValClass[$cur_pos] eq '<' ){
          gen_chunk('readline()');
          $cur_pos++;
       }elsif( $ValClass[$cur_pos] eq ')' ){
-         if( $RecursionLevel>0 ){
-            if( $ValPy[$cur_pos] eq ']' || $ValPy[$cur_pos] eq '}' ){
-               gen_chunk($ValPy[$cur_pos]);
-            }else{
-               gen_chunk(')');
-            }
-             $RecursionLevel--;
-         }else{
-            gen_chunk($ValPy[$cur_pos]);
-         }
-         return $cur_pos+1;
-      }elsif( $ValClass[$cur_pos] eq '0' || $ValClass[$cur_pos] eq '1' ){
-         $start=$cur_pos+1; # need that for regular expressions.
+         $RecursionLevel--;
          gen_chunk($ValPy[$cur_pos]);
-         $cur_pos++;
+         return $cur_pos+1;
+      }elsif( $ValClass[$cur_pos] eq '0' ){
+         gen_chunk($ValPy[$cur_pos]);
+         $start=$cur_pos=$cur_pos+1; # change starting point -- we need that for regular expressions.
        }elsif( $ValClass[$cur_pos] eq 'x' ){
          # execution of Unix uility via shell
           gen_chunk(qq{subprocess.run($ValPy[$cur_pos],capture_output=True,text=True,shell=True).stdout});
@@ -1568,17 +1547,16 @@ my ($cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
       }elsif( $ValClass[$cur_pos]=~ /[sf]/ ){
          # match in Puthon is library re.match
          # As the argument to =~ can be complex. currently we can transtalte only two simple case: a scalar and an element of array/hash
-         $end_pos=next_same_level_token('0',$cur_pos,$limit); # limit  of search for '~' below
-         if( $end_pos==-1 ){ $end_pos=$limit;}
-
+         $pos=next_same_level_token('0',$cur_pos,$limit); # limit  of search for '~' below
+         $end_pos=( $pos>-1 )? $pos : (($bracketed ==1) ? $limit-1 : $limit); # limit scan to next && or ||
          if( $end_pos-$cur_pos>=2 && $ValClass[$cur_pos] eq 's'
              && $ValClass[$cur_pos+1] eq '='  &&  $ValClass[$cur_pos+2] eq 'f' ){
             # can be method like while( $line=shift )
             gen_chunk($ValPy[$cur_pos],$ValPy[$cur_pos+1]);
             $cur_pos=function($cur_pos+2,$end_pos);
-         }elsif( $limit-$cur_pos>1 && ($split=index(substr($TokenStr,$cur_pos,$end_pos-$cur_pos+1),'~'))>-1 ){
-            # REGEX processing if ($line=~/abc/
-            $cur_pos=regex_and_translate($start,$cur_pos,$split+$cur_pos);
+         }elsif( $end_pos-$cur_pos>1 && ($split=index(substr($TokenStr,$cur_pos,$end_pos-$cur_pos+1),'~'))>-1 ){
+            # REGEX processing $line=~/abc/
+            $cur_pos=regex_and_translate($start,$cur_pos,$cur_pos+$split); # split is index from $cur_pos not abs index
          }elsif( $ValClass[$cur_pos] eq 'f'){
             $cur_pos=function($cur_pos,$end_pos);
             ($cur_pos<0) && return -255;
@@ -1587,12 +1565,12 @@ my ($cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
             $cur_pos++;
          }
       }elsif( $cur_pos<=$#ValClass && $ValClass[$cur_pos] eq 'i' && $ValClass[$cur_pos+1] eq '(' ){
-         $end_pos=matching_br($cur_pos+1);
+         $end_pos=matching_br($cur_pos+1); # find balanced bracket for the current bracket
          gen_chunk($ValPy[$cur_pos]);
          if( $LocalSub{$ValPy[$cur_pos]} ){
             # Perl user defined function -- need to pass an array
             gen_chunk('([');
-            expression($cur_pos+2,$end_pos-1,0);
+            expression($cur_pos+2,$end_pos-1,0); # call without brackets
             gen_chunk('])');
             $cur_pos=$end_pos+1;
          }elsif( $ValClass[$cur_pos+2] eq 'f' ){
@@ -1602,8 +1580,8 @@ my ($cur_pos,$limit,$mode,$split,$start,$prev_k,$end_pos);
             gen_chunk(')');
          }else{
             #function of unknown origin
-            logme("W","Function $ValPy[$cur_pos] is niether internal not built-in function. Please check the correspondence of arguments");
-            expression($cur_pos+1,$end_pos-1,1);
+            logme("W","Function $ValPy[$cur_pos] is neither internal not built-in function. Please check the correspondence of arguments");
+            expression($cur_pos+1,$end_pos,1); # preseve brackets
          }
          $cur_pos=$end_pos+1;
       }else{

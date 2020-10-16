@@ -100,15 +100,13 @@ sub abend
 {
 my $message;
 my ($package, $filename, $lineno) = caller;
-      $message="input line number $. text of the line: $Pythonizer::IntactLine";
+      $message="ABEND in module $package. Line $. : $Pythonizer::IntactLine";
       if( scalar(@_)>0 ){
-         $message.="Situation '$_[0]' at ";
+         $message.="\n$_[0]";
       }
 #  Syslog might not be availble
-      $message="\nABNORMAL COMPLETION AT $package of $::SCRIPT_NAME line $lineno:\n $message\n\n\n";
       out($message);
       exit(-255);
-
 } # abend
 
 #
