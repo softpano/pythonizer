@@ -95,18 +95,16 @@ sub prolog
             exit 255;
          }
       }
-      if( exists $options{'l'} ){
-         if($options{'l'}>180 && $options{'l'}>256  ){
-            $maxlinelen=$options{'l'};
+      if( exists $options{'w'} ){
+         if($options{'w'}<100 && $options{'w'}>256  ){
+            $maxlinelen=$options{'w'};
             if( $maxlinelen//2==1 ){
                $maxlinelen-=1;
             }
          }else{
-            logme('S',"Incorrect value for maxlinelen: $options{'l'} Minimum width of protocol screen is 180. Max 256 Default value 188 is assumned \n");
-            exit 255;
+            logme('S',"Incorrect value for length of the line in protocol of tranlation: $options{'w'}\n Minimum  is 100. Max is 256. Default value 188 is assumned \n");
          }
-      }
-#
+      }#
 #
 # Application arguments
 #
