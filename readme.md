@@ -31,19 +31,17 @@ See the User Guide for detail.
 
 Currently only few user options are supported (pythonizer -h provides a  list of options):  
 
--p -- The version of Python used for generation. Default is 3.8 (can be set explicitly by specifying -p 3) You can set 2.7 by using  -p 2
+-w -- The width of the line of the protocol of translation. The default is 188
 
--v -- verbosity -v 0 -minimal verbosity -v 3 -- max verbosity; can also be expresses as -v -vv and -vvv -- forms to which Unix user got used in other utilities
+-v -- verbosity -v 0 -- minimal verbosity -v 3 -- max verbosity; can also be expresses as -v -vv and -vvv -- forms to which Unix user got used in other utilities
 
--t  -- tab size for generated code; the default -t 4 
+-t  -- tab size for generated code; the default is  -t 4 
 
--r -- refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the pre_pythonizer preliminary pass on the source code. Of course this can be  done manually with  more control but this provides an integrated way to refactor the program. 
+-r -- refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the pre_pythonizer preliminary pass on the source code. Of course this can be  done only once and can be manually as a separate pass with more control,  but still this option is not completly usless, as it provides an integrated way to refactor the program. 
 
-You need to download files or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example,  /opt/Pythonizer 
+To try pythonizer you need to download files (as Zip archive via githun (GitHub crrates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example,  /opt/Pythonizer 
 
-The directory into which the main program and modules are downloaded  needs to be made current before the run. 
-
-Currently main program and all modules should reside in a single directory from which you will run the program.  
+The directory into which the modules are downloaded  needs to be made available to Perl via PERL5LIB env variable or via -I option . 
 
 ATTENTION PYTHON PROGRAMMERS: Environment varible PERL5LIB or option -I of the Perl interpreter should specify the directory with modules in order to run the pythonizer. Otherwise modules will NOT be found.   
 
