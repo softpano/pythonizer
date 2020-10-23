@@ -10,20 +10,20 @@ http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Py
 
 ### Possible use cases
 
-Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task knowns only Python (University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance.) 
+Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task known only Python (University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance.) 
 
-In this case, a program that "explains" Perl constructs in Python term would be extremely useful and, sometimes, a lifesaver. Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), and in most cases, old scripts will stay too.
+In this case, a program that "explains" Perl constructs in Python term would be extremely useful and, sometimes, a lifesaver. Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), and in most cases, old scripts will stay too. In many cases conversion is not worth the effort, as the script still can be maintained in Perl.  But you need to understand the script you are maintaining and here pythonizer can help. 
 
-The other role is to give a quick start for system administrators who want to learn Python (for example, who need to support researchers who work with Python), but who currently knows only Perl -- many older school sysadmins dislike Python and for a reason ;-) 
-
+The other role is to give a quick start for system administrators who know Perl well but want to learn Python (for example, who need to support researchers who work with Python), but who currently knows only Perl -- many older school sysadmins dislike Python and for a reason ;-). This way they can convert some of their small sysadmin scripts and try to debug it in Python, getting their feet wet, so to speak. And this way they obtain better understanding as for whether the compete switch to Python makes sense in their particular situation or not. 
 
 ### Pre-pythonizer implements the first phaze of translation
 
-The first pass is currently fully optional and need transformations of Perl code can be performed by other utilities. It just slightly increase probability of more correct translation of the code. It reformat the code so that curvy brackets were mostly on separate lines (this was useful for pythonizer up to version 0.2; later versions  do not depend on this transformation.) 
+The first pass is currently fully optional as the needed transformations of Perl code (moving subroutines up) and slight reformatting of Perlcode can be performed by other utilities, or manually. It just slightly increase probability of more correct translation of the code. It reformat the code so that curvy brackets were mostly on separate lines (this was useful for pythonizer up to version 0.2; later versions  do not depend on this transformation.) 
 
 It can be used as a separate program, which transforms initial Perl script creating a backup with the extension .original. The main useful function in the current version is refactoring of the Perl program by pushing subroutines up as in Python subroutines needs to be declared before use. 
 
-It needs to run only once for each Perl script you want to translate to Python. subsequence modification can be performed on this text instead of the original script. 
+After you convert the script via pythonizer, it usually does not contain syntax errors and you can start to modify statement translated incorrectly semantically using Python interpreter. As you can guess pythonize sometimes has allergy to very complex Perl constructs and you iether need to comment out those statements or simplify them before the translation. Version 0.8 deals better with statements with eliminated parenthesis (for example possible in postfix if statements) , which become kind of fashion in Perl (although this does not add much to readability and something de-parenthesized statement are ambiguous) , but still properly parenthesized statements are often translated more correctly. 
+
 
 See the User Guide for detail. 
 
@@ -33,7 +33,7 @@ Currently only few user options are supported (pythonizer -h provides a  list of
 
 -w -- The width of the line of the protocol of translation. The default is 188
 
--v -- verbosity -v 0 -- minimal verbosity -v 3 -- max verbosity; can also be expresses as -v -vv and -vvv -- forms to which Unix user got used in other utilities
+-v -- verbosity -v 0 -- minimal verbosity -v 3 -- max verbosity; can also be expresses as -v -vv and -vvv -- forms to which most Unix users got used in other utilities
 
 -t  -- tab size for generated code; the default is  -t 4 
 
