@@ -41,7 +41,7 @@ Currently only few user options are supported (pythonizer -h provides a  list of
 
 -r -- refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the pre_pythonizer preliminary pass on the source code. Of course this can be  done only once and can be manually as a separate pass with more control,  but still this option is not completly usless, as it provides an integrated way to refactor the program. 
 
-To try pythonizer you need to download files (as Zip archive via githun (GitHub crrates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example,  /opt/Pythonizer 
+To try pythonizer you need to download files (as Zip archive -- GitHub creates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example,  /opt/Pythonizer 
 
 The directory into which the modules are downloaded  needs to be made available to Perl via PERL5LIB env variable or via -I option . 
 
@@ -55,18 +55,18 @@ export PERL5LIB=~/Perl5/lib && ~/bin/pythonizer /path/to/your/program.pl
 
 If the program runs to the end you will get "pythonized" text in /path/to/your/program.py
 
-It also produces protocol of translation in /tmp/Pythonizer with "size by side" Perl and Python code, which allows you to analyses the protocol and detect places that need to be commented out and translated manually. 
+It also produces protocol of translation in /tmp/Pythonizer with "side by side" Perl and Python code, which allows you to analyse the protocol and detect places that need to be commented out and translated manually. 
 
 If  __DATA__ or __END__ are used a separate file with  the extension  .data  (/path/to/your/program.data for the example above) will be created with  the content on this section of Perl script.
 
 
 ### HISTORY 
 
-Oct 02, 2020: Version 0.8 was uploaded. More correct translation of array assignments. Some non-obvious bugs in translation were fixed. Now you need to specify PERL5LIB variable pointing it to the directory with modules to run the program. Global variable now are initialized after main sub to undef value to create a global namespace. Previously this was done incorrectly.  Simple installer for Python programmers who do not know much Perl added: the problem proved to be useful as a help for understanding Perl scripts by Python programmers. 
+Oct 02, 2020: Version 0.8 was uploaded. It provides a more correct translation of array assignments. Some non-obvious bugs in translation were fixed. Now you need to specify PERL5LIB variable pointing it to the directory with modules to run the program. Global variable now are initialized after main sub to undef value to create a global namespace. Previously this was done incorrectly.  Simple installer for Python programmers who do not know much Perl was added. Users report that pythonizer proved to be very useful as a help for understanding Perl scripts by Python programmers. 
 
 Sep 18, 2020: Version 0.7 was uploaded. This version creates of the list of global variables for each subroutine to maintain the same visibility in Python as in Perl and generates global statement with the list of such  variables that is inserted in each Python subroutine definition if pythonizer determined that this subroutine access global variables. 
 
-Sep 08, 2020: Version 0.6 was uploaded. Generated source does not contain syntax errors and starts executing in Python interpreter till the first error. List on internal functions created. Translation of backquotes and open statement improved. 
+Sep 08, 2020: Version 0.6 was uploaded. Generated source does not contain syntax errors and starts executing in Python interpreter till the first error. List on internal functions created. Translation of backquotes and open statement improved. This version proved to be quite usable for converting simple sysadmin scripts in  Perl, as a an exersize in learning Python. 
 
 Aug 31, 2020: Version 0.5 was uploaded. Regular expression and tr function translation was improved. Substr function translation improved. Many other changes and  error corrections. Option -r (refactor) implemented to allow refactoring. By default loads and run pre-pythonlizer.pl. As it changes the source, creating a backup,  you need to run it only once.  
 
