@@ -1,7 +1,6 @@
 #!/usr/bin/perl
-## pythonizer Version 0.55 (Sept 2, 2020)
-## Fuzzy prettyprint STDERR for Perl scripts
-## Copyright Nikolai Bezroukov, 2019-2020.
+## pythonizer -- Translator of the subset of Perl 5 to Python 3.x 
+## Copyright Nikolai Bezroukov, 2019-2021.
 ## Licensed under Perl Artistic license
 ##
 ## As most Perl statement are simple over 80% of them usually allow sucessful translation.  That's why we use the term "fuzzy" translation.
@@ -85,6 +84,7 @@
 # 0.850  2020/10/12  BEZROUN   print translation improved; many fixes in lex analyser
 # 0.860  2020/10/14  BEZROUN   Python 2.7 mode eliminated to simplify the code. Option -p removed. "since" test passed
 # 0.870  2020/10/21  BEZROUN   Treatment of brackets systematised. The code of subroutine expression revised.
+# 0.871  2021/05/10  BEZROUN   Minor corrections in the header. 
 #!start ===============================================================================================================================
 
    use v5.10.1;
@@ -103,7 +103,7 @@
 
    use Pythonizer qw(correct_nest getline prolog output_line @LocalSub %GlobalVar);
 
-   $VERSION='0.85';
+   $VERSION='0.871';
    $SCRIPT_NAME='pythonizer';
 #
 # options
@@ -159,7 +159,7 @@
 #
    @Perlscan::BufferValClass=@Perlscan::BufferValCom=@Perlscan::BufferValPerl=@Perlscan::BufferValPy=(); # cleaning after the first pass
 my ($start,$token_buffer_active);
-   $CurSub='main'; # default value of the current subroutine
+   $CurSub='main';
    $token_buffer_active=0;
    $we_are_in_sub_body=0;
    while( defined($line) || scalar(@Perlscan::BufferValClass)>0 ){
@@ -450,6 +450,7 @@ my ($start,$token_buffer_active);
             $rc=open_fun(0,'s');
          }else{
             $TrStatus=function(0);
+
          }
       }elsif( $ValClass[0] eq 'x' ){
          # this is backquotes
@@ -1302,12 +1303,7 @@ my ($k, $split, $split2, $delta, $dict, $incr, $arg1, $arg2, $perl_name, $py_nam
    }elsif($perl_name eq 'shift' ){
       # assent only a single arg -- array; if no argument then it uses @_ array
       if( $bracketed==-1 ){
-         if( $CurSub eq 'main' || $Pythonizer::CurNest==0 ){
-            $arg1='sys.argv';
-         }else{
-            $arg1='perl_arg_array';
-         }
-         gen_chunk("$arg1$py_name");
+          gen_chunk("perl_arg_array$py_name");
       }elsif( $end_pos==$start ){
          gen_chunk($ValPy[$start],$py_name);
       }else{
@@ -1376,7 +1372,7 @@ my ($k, $split, $split2, $delta, $dict, $incr, $arg1, $arg2, $perl_name, $py_nam
          # single argument
          gen_chunk('('.$ValPy[$start].')')
       }elsif( $bracketed==1 ){
-         $TrStatus=expression($start,$end_pos,1);
+         $TrStatus=expression($start,$end_pos,0);
          return -255 if ($TrStatus<0);
       }else{
          gen_chunk('(');
