@@ -34,12 +34,12 @@ Currently only few user options are supported (pythonizer -h provides a  list of
 
 Option | Description
 ------ | -----------
--w     | The width of the line of the protocol of translation. The default is 188
--v     | verbosity `-v 0` -- minimal verbosity `-v 3` -- max verbosity; can also be expresses as `-v`, `-vv` and `-vvv` -- forms to which most Unix users got used in other utilities
--t     | tab size for generated code; the default is  `-t 4`
--r     | refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the `pre_pythonizer` preliminary pass on the source code. Of course this can be  done only once and can be manually as a separate pass with more control,  but still this option is not completly usless, as it provides an integrated way to refactor the program. 
+-w     | The width of the line of the protocol of translation.<br/>The default is 188
+-v     | Verbosity <br/>`-v 0` -- minimal verbosity <br/>`-v 3` -- max verbosity; <br/> `-v`, `-vv` and `-vvv` -- forms to which most Unix users got used in other utilities
+-t     | Tab size for generated code;<br/>The default is  `-t 4`
+-r     | Refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the `pre_pythonizer` preliminary pass on the source code. Of course this can be  done only once and can be manually as a separate pass with more control,  but still this option is not completly usless, as it provides an integrated way to refactor the program. 
 
-To try pythonizer you need to download files (as Zip archive -- GitHub creates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example, `/opt/Pythonizer`
+To try `pythonizer` you need to download files (as Zip archive -- GitHub creates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example, `/opt/Pythonizer`
 
 The directory into which the modules are downloaded  needs to be made available to Perl via PERL5LIB env variable or via -I option . 
 
