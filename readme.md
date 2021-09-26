@@ -1,16 +1,15 @@
 ## Translator from Perl to Python 
-### THIS IS AN ANNOUNCEMENT FOR VERSION 0.8 of "FUZZY"  TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
+### THIS IS AN ANNOUNCEMENT FOR VERSION 0.8 of "FUZZY" TRANSLATOR/TRANSRIBER FROM PERL TO PYTHON 
 
 This readme is for informational purposes only and is not intended to be updated often. More current information can be found at:  
 
-http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/index.shtml
-
-http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml
+- [Introduction](http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/index.shtml)
+- [User Guide](http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml)
  
 
 ### Possible use cases
 
-Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task known only Python (University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance.) 
+Some organizations are now involved in converting their old Perl codebase into other scripting languages, such as Python. But a more common task is to maintain existing Perl scripts, when the person who is assigned to this task known only Python (University graduates now typically know Python but not Perl and that creates difficulties in the old codebase maintenance).
 
 In this case, a program that "explains" Perl constructs in Python terms would be extremely useful and, sometimes, a lifesaver. Of course, Perl 5 is here to stay (please note what happened with people who were predicting the demise of Fortran ;-), and in most cases, old scripts will stay too. In many cases conversion is not worth the effort, as the script still can be maintained in Perl.  But you need to understand the script you are maintaining and here pythonizer can help. 
 
@@ -20,28 +19,27 @@ The other role is to give a quick start for system administrators who know Perl 
 
 The first pass is currently fully optional as the needed transformations of Perl code (moving subroutines up) and slight reformatting of Perlcode can be performed by other utilities, or manually. It just slightly increases the probability of more correct translation of the code. It reformats the code so that curvy brackets were mostly on separate lines (this was useful for pythonizer up to version 0.2; later versions  do not depend on this transformation.) 
 
-It can be used as a separate program, which transforms initial Perl script creating a backup with the extension .original. The main useful function in the current version is refactoring of the Perl program by pushing subroutines up as in Python subroutines needs to be declared before use. 
+It can be used as a separate program, which transforms initial Perl script creating a backup with the extension `.original`. The main useful function in the current version is refactoring of the Perl program by pushing subroutines up as in Python subroutines needs to be declared before use. 
 
 After you convert the script via pythonizer, it usually does not contain syntax errors and you can start to modify statements translated incorrectly semantically one by one using Python interpreter. 
 
 As you can guess pythonize sometimes has allergy to very complex Perl constructs and you either need to comment out those statements or simplify them before the translation. Version 0.8 deals better with statements with eliminated parenthesis (the format widely used in postfix if statements). Elimnating paranthesis become kind of fashion in Perl although this does not add much to readability and something de-parenthesized statement are ambiguous.  Pythonizer tries to keep up with this fashion, althouth properly parenthesized statements are often translated more correctly. 
 
 
-See the User Guide for detail. 
+See the [User Guide](http://www.softpanorama.org/Scripting/Pythonorama/Python_for_perl_programmers/Pythonizer/user_guide.shtml) for detail. 
 
 ### Pythonizer implements actual transformation of Perl into Python
 
 Currently only few user options are supported (pythonizer -h provides a  list of options):  
 
--w -- The width of the line of the protocol of translation. The default is 188
+Option | Description
+------ | -----------
+-w     | The width of the line of the protocol of translation. The default is 188
+-v     | verbosity `-v 0` -- minimal verbosity `-v 3` -- max verbosity; can also be expresses as `-v`, `-vv` and `-vvv` -- forms to which most Unix users got used in other utilities
+-t     | tab size for generated code; the default is  `-t 4`
+-r     | refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the `pre_pythonizer` preliminary pass on the source code. Of course this can be  done only once and can be manually as a separate pass with more control,  but still this option is not completly usless, as it provides an integrated way to refactor the program. 
 
--v -- verbosity -v 0 -- minimal verbosity -v 3 -- max verbosity; can also be expresses as -v -vv and -vvv -- forms to which most Unix users got used in other utilities
-
--t  -- tab size for generated code; the default is  -t 4 
-
--r -- refactor Perl code. If specified, before processing the script by the pythonizer, it  invokes the pre_pythonizer preliminary pass on the source code. Of course this can be  done only once and can be manually as a separate pass with more control,  but still this option is not completly usless, as it provides an integrated way to refactor the program. 
-
-To try pythonizer you need to download files (as Zip archive -- GitHub creates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example,  /opt/Pythonizer 
+To try pythonizer you need to download files (as Zip archive -- GitHub creates zip from the latest posted verion on demand for you)  or replicate the directory via git . In the later case the main program and three modules mentioned about should be put into a separate directory. For example, `/opt/Pythonizer`
 
 The directory into which the modules are downloaded  needs to be made available to Perl via PERL5LIB env variable or via -I option . 
 
@@ -49,15 +47,17 @@ ATTENTION PYTHON PROGRAMMERS: Environment varible PERL5LIB or option -I of the P
 
 You can run Pythonizer both in Cygwin and Linux. 
 
-For initial testing to "pythonize" the test Perl script /path/to/your/program.pl  you need to use the something like: 
+For initial testing to "pythonize" the test Perl script `/path/to/your/program.pl`  you need to use the something like: 
 
+```
 export PERL5LIB=~/Perl5/lib && ~/bin/pythonizer /path/to/your/program.pl
+```
 
 If the program runs to the end you will get "pythonized" text in /path/to/your/program.py
 
 It also produces protocol of translation in /tmp/Pythonizer with "side by side" Perl and Python code, which allows you to analyse the protocol and detect places that need to be commented out and translated manually. 
 
-If  __DATA__ or __END__ are used a separate file with  the extension  .data  (/path/to/your/program.data for the example above) will be created with  the content on this section of Perl script.
+If  `__DATA__` or `__END__` are used a separate file with  the extension  .data  (/path/to/your/program.data for the example above) will be created with  the content on this section of Perl script.
 
 
 ### HISTORY 
@@ -258,5 +258,5 @@ Here is an fragment of translation of pre-pythonizer.pl which exists in this rep
 1113 | 2 |      |      #}
 1114 | 2 |      |      process_line([line,offset])                                                #PL: process_line($line,$offset);
 1116 | 1 |      |   # while
-
 ```
+

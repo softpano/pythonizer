@@ -31,6 +31,14 @@
 # 0.30  2020/09/01  BEZROUN   Several errors corrected. Integration with pythonizer via option -r (refator) of the latter.
 # 0.40  2020/10/05  BEZROUN   Default changed to no main  sub. Option -m introduced (create_main_sub mode)
 #=========================== START =========================================================
+BEGIN {
+    use File::Spec::Functions qw(rel2abs);
+    use File::Basename qw(dirname);
+
+    my $path   = rel2abs( $0 );
+    our $myDir = dirname( $path );
+    push @INC,$myDir;
+}
 
    use v5.10;
 #  use Modern::Perl;
